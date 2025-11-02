@@ -64,6 +64,7 @@ goxcel transforms human-readable `.gxl` templates into Excel `.xlsx` files using
 - ✅ **Excel formulas** with cell references
 - ✅ **Cell merging** for headers and layouts
 - ✅ **Multi-sheet workbooks** with independent sheets
+- ✅ **JSON and YAML data**: Support for both data formats
 
 ### Components (Placeholders in v1.0)
 - ⏳ **Images**: PNG/JPEG embedding
@@ -100,8 +101,11 @@ go get github.com/ryo-arima/goxcel
 # Build from source
 make build
 
-# Generate Excel file
+# Generate Excel file from JSON data
 .bin/goxcel generate --template .etc/sample.gxl --data .etc/sample.json --output invoice.xlsx
+
+# Generate Excel file from YAML data
+.bin/goxcel generate --template .etc/sample.gxl --data .etc/sample.yaml --output invoice.xlsx
 
 # Preview without generating file
 .bin/goxcel generate --template .etc/sample.gxl --data .etc/sample.json --dry-run

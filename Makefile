@@ -70,9 +70,14 @@ vet: ## Run go vet
 	@echo "Running go vet..."
 	go vet ./...
 
-run: build ## Build and run with sample data
-	@echo "Running goxcel with sample data..."
+run: build ## Build and run with sample data (JSON)
+	@echo "Running goxcel with sample JSON data..."
 	$(BINARY) generate --template .etc/sample.gxl --data .etc/sample.json --output output.xlsx
+	@echo "Generated: output.xlsx"
+
+run-yaml: build ## Build and run with sample data (YAML)
+	@echo "Running goxcel with sample YAML data..."
+	$(BINARY) generate --template .etc/sample.gxl --data .etc/sample.yaml --output output.xlsx
 	@echo "Generated: output.xlsx"
 
 run-dry: build ## Build and run in dry-run mode

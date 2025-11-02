@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/ryo-arima/goxcel/pkg/config"
@@ -14,6 +15,7 @@ import (
 	"github.com/ryo-arima/goxcel/pkg/usecase"
 	"github.com/ryo-arima/goxcel/pkg/util"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // InitGenerateCmd creates the 'generate' subcommand which parses a .gxl and generates to .xlsx.
@@ -28,7 +30,7 @@ func InitGenerateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "generate",
 		Short: "Generate a .gxl template to .xlsx",
-		Long:  "Generate a .gxl template with optional JSON data into an Excel .xlsx file.",
+		Long:  "Generate a .gxl template with optional JSON or YAML data into an Excel .xlsx file.",
 		Run: func(cmd *cobra.Command, args []string) {
 			if templatePath == "" && len(args) > 0 {
 				templatePath = args[0]
@@ -43,7 +45,7 @@ func InitGenerateCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&templatePath, "template", "t", "", "path to .gxl template file")
-	cmd.Flags().StringVarP(&dataPath, "data", "d", "", "path to JSON data file (optional)")
+	cmd.Flags().StringVarP(&dataPath, "data", "d", "", "path to JSON or YAML data file (optional)")
 	cmd.Flags().StringVarP(&outputPath, "output", "o", "", "output .xlsx file path (optional; if empty with --dry-run prints summary)")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "do not write .xlsx; print a summary instead")
 	return cmd
@@ -73,12 +75,35 @@ func runGenerate(templatePath, dataPath, outputPath string, dryRun bool) error {
 			return fmt.Errorf("read data: %w", err)
 		}
 		var m map[string]any
-		if err := json.Unmarshal(db, &m); err != nil {
-			conf.Logger.ERROR(util.FSR2, "Failed to parse data JSON", map[string]interface{}{"file": dataPath, "error": err.Error()})
-			return fmt.Errorf("parse data json: %w", err)
+
+		// Determine file format by extension
+		ext := strings.ToLower(filepath.Ext(dataPath))
+		switch ext {
+		case ".yaml", ".yml":
+			if err := yaml.Unmarshal(db, &m); err != nil {
+				conf.Logger.ERROR(util.FSR2, "Failed to parse data YAML", map[string]interface{}{"file": dataPath, "error": err.Error()})
+				return fmt.Errorf("parse data yaml: %w", err)
+			}
+			conf.Logger.DEBUG(util.FSR1, "YAML data loaded successfully", nil)
+		case ".json":
+			if err := json.Unmarshal(db, &m); err != nil {
+				conf.Logger.ERROR(util.FSR2, "Failed to parse data JSON", map[string]interface{}{"file": dataPath, "error": err.Error()})
+				return fmt.Errorf("parse data json: %w", err)
+			}
+			conf.Logger.DEBUG(util.FSR1, "JSON data loaded successfully", nil)
+		default:
+			// Try JSON first, then YAML
+			if err := json.Unmarshal(db, &m); err != nil {
+				if err := yaml.Unmarshal(db, &m); err != nil {
+					conf.Logger.ERROR(util.FSR2, "Failed to parse data as JSON or YAML", map[string]interface{}{"file": dataPath, "error": err.Error()})
+					return fmt.Errorf("parse data (tried JSON and YAML): %w", err)
+				}
+				conf.Logger.DEBUG(util.FSR1, "Data loaded successfully as YAML", nil)
+			} else {
+				conf.Logger.DEBUG(util.FSR1, "Data loaded successfully as JSON", nil)
+			}
 		}
 		data = m
-		conf.Logger.DEBUG(util.FSR1, "Data loaded successfully", nil)
 	}
 
 	// Generate

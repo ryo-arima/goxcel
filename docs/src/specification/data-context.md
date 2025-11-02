@@ -1,6 +1,6 @@
 # Data Context
 
-The data context is the JSON data structure passed to a GXL template during rendering. It provides the values for all expressions and control structures.
+The data context is the JSON or YAML data structure passed to a GXL template during rendering. It provides the values for all expressions and control structures.
 
 ---
 
@@ -8,17 +8,39 @@ The data context is the JSON data structure passed to a GXL template during rend
 
 ### What is Data Context?
 
-The data context is a JSON object that contains:
+The data context is a structured data object (JSON or YAML) that contains:
 - **Variables**: Simple values (strings, numbers, booleans)
 - **Objects**: Nested structures with properties
 - **Arrays**: Lists of items for iteration
 
 ### How It Works
 
-1. **Prepare data**: Create JSON data structure
+1. **Prepare data**: Create JSON or YAML data structure
 2. **Pass to renderer**: Provide data when rendering template
 3. **Access in template**: Use expressions `{{ }}` to access data
 4. **Render output**: Template is filled with data values
+
+### Supported Formats
+
+**JSON** (`.json`):
+```json
+{
+  "title": "Sales Report",
+  "items": [
+    {"name": "Widget", "price": 10.00}
+  ]
+}
+```
+
+**YAML** (`.yaml`, `.yml`):
+```yaml
+title: Sales Report
+items:
+  - name: Widget
+    price: 10.00
+```
+
+Both formats are equivalent and can be used interchangeably.
 
 ---
 
