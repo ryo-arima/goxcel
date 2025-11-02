@@ -1,4 +1,5 @@
 # Go build artifacts
+.bin/
 bin/
 dist/
 *.out
@@ -13,6 +14,9 @@ coverage.html
 cpu.prof
 *.prof
 
+# Documentation build output
+docs/dist/
+
 # macOS
 .DS_Store
 
@@ -22,3 +26,6 @@ cpu.prof
 
 # GitHub Copilot instructions (sensitive project context)
 .github/instructions/
+
+# Generated files
+output.xlsx

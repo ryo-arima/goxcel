@@ -1,0 +1,27 @@
+<Book>
+<Sheet name="Components demo">
+<Grid>
+| Components demo |
+</Grid>
+<Merge range="A1:C1" />
+
+<Grid>
+| Name | Quantity | Price |
+</Grid>
+
+<For each="item in items">
+<Grid>
+| {{ item.name }} | {{ item.qty }} | {{ item.price }} |
+</Grid>
+</For>
+
+<Grid>
+|  |  Total | =SUM(C4:C6) |
+</Grid>
+
+<Image ref="E2" src="assets/logo.png" width="120" height="60" />
+<Shape ref="E5" kind="rectangle" text="Sample Shape" width="150" height="50" />
+<Chart ref="E8" type="column" dataRange="A3:C6" title="Sales Chart" width="420" height="240" />
+<Pivot ref="E16" sourceRange="A3:C6" rows="Name" values="SUM:Price" />
+</Sheet>
+</Book>

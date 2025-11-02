@@ -1,5 +1,9 @@
 .PHONY: help build clean test fmt lint run install dev
 
+# Binary output directory
+BIN_DIR := .bin
+BINARY := $(BIN_DIR)/goxcel
+
 # Default target
 help: ## Show this help message
 	@echo "Available targets:"
@@ -7,20 +11,23 @@ help: ## Show this help message
 
 build: ## Build the CLI binary
 	@echo "Building goxcel..."
-	go build -o goxcel ./cmd
-	@echo "Build complete: ./goxcel"
+	@mkdir -p $(BIN_DIR)
+	go build -o $(BINARY) ./cmd
+	@echo "Build complete: $(BINARY)"
 
 build-all: ## Build for all platforms
 	@echo "Building for multiple platforms..."
-	GOOS=darwin GOARCH=amd64 go build -o goxcel-darwin-amd64 ./cmd
-	GOOS=darwin GOARCH=arm64 go build -o goxcel-darwin-arm64 ./cmd
-	GOOS=linux GOARCH=amd64 go build -o goxcel-linux-amd64 ./cmd
-	GOOS=windows GOARCH=amd64 go build -o goxcel-windows-amd64.exe ./cmd
+	@mkdir -p $(BIN_DIR)
+	GOOS=darwin GOARCH=amd64 go build -o $(BIN_DIR)/goxcel-darwin-amd64 ./cmd
+	GOOS=darwin GOARCH=arm64 go build -o $(BIN_DIR)/goxcel-darwin-arm64 ./cmd
+	GOOS=linux GOARCH=amd64 go build -o $(BIN_DIR)/goxcel-linux-amd64 ./cmd
+	GOOS=windows GOARCH=amd64 go build -o $(BIN_DIR)/goxcel-windows-amd64.exe ./cmd
 	@echo "Multi-platform build complete"
 
 clean: ## Clean build artifacts
 	@echo "Cleaning build artifacts..."
-	rm -f goxcel goxcel-* output.xlsx
+	rm -rf $(BIN_DIR)
+	rm -f output.xlsx
 	@echo "Clean complete"
 
 test: ## Run tests
@@ -65,12 +72,12 @@ vet: ## Run go vet
 
 run: build ## Build and run with sample data
 	@echo "Running goxcel with sample data..."
-	./goxcel generate --template .examples/sample.gxl --data .examples/sample-data.json --output output.xlsx
+	$(BINARY) generate --template .etc/sample.gxl --data .etc/sample.json --output output.xlsx
 	@echo "Generated: output.xlsx"
 
 run-dry: build ## Build and run in dry-run mode
 	@echo "Running goxcel in dry-run mode..."
-	./goxcel generate --template .examples/sample.gxl --data .examples/sample-data.json --dry-run
+	$(BINARY) generate --template .etc/sample.gxl --data .etc/sample.json --dry-run
 
 install: ## Install the binary to $GOPATH/bin
 	@echo "Installing goxcel..."
@@ -97,14 +104,15 @@ deps-update: ## Update dependencies
 
 example: ## Run example generation
 	@echo "Generating example Excel file..."
-	@if [ ! -f goxcel ]; then make build; fi
-	./goxcel generate --template .examples/sample.gxl --data .examples/sample-data.json --output output.xlsx
+	@if [ ! -f $(BINARY) ]; then make build; fi
+	$(BINARY) generate --template .etc/sample.gxl --data .etc/sample.json --output output.xlsx
 	@echo "Example generated: output.xlsx"
 
 debug: ## Build with debug flags and run
 	@echo "Building with debug flags..."
-	go build -gcflags="all=-N -l" -o goxcel-debug ./cmd
-	@echo "Debug build complete: ./goxcel-debug"
+	@mkdir -p $(BIN_DIR)
+	go build -gcflags="all=-N -l" -o $(BIN_DIR)/goxcel-debug ./cmd
+	@echo "Debug build complete: $(BIN_DIR)/goxcel-debug"
 
 benchmark: ## Run benchmarks
 	@echo "Running benchmarks..."
@@ -120,5 +128,33 @@ docker-build: ## Build Docker image
 	@echo "Building Docker image..."
 	docker build -t goxcel:latest .
 	@echo "Docker image built: goxcel:latest"
+
+docs-build: ## Build documentation with mdbook
+	@echo "Building documentation..."
+	@if ! command -v mdbook >/dev/null 2>&1; then \
+		echo "Error: mdbook not found. Install with:"; \
+		echo "  cargo install mdbook"; \
+		echo "  # or"; \
+		echo "  brew install mdbook"; \
+		exit 1; \
+	fi
+	cd docs && mdbook build
+	@echo "Documentation built: docs/dist/index.html"
+
+docs-serve: ## Serve documentation with live reload
+	@echo "Starting documentation server..."
+	@if ! command -v mdbook >/dev/null 2>&1; then \
+		echo "Error: mdbook not found. Install with:"; \
+		echo "  cargo install mdbook"; \
+		echo "  # or"; \
+		echo "  brew install mdbook"; \
+		exit 1; \
+	fi
+	cd docs && mdbook serve --open
+
+docs-clean: ## Clean documentation build artifacts
+	@echo "Cleaning documentation..."
+	rm -rf docs/dist
+	@echo "Documentation cleaned"
 
 .DEFAULT_GOAL := help
