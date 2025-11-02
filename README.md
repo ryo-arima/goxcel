@@ -478,24 +478,6 @@ git checkout -b feature/my-feature
 
 ## FAQ
 
-**Q: Does goxcel support reading Excel files?**  
-A: Not yet. Currently focused on generation. Reading support planned for v2.0+.
-
-**Q: Can I use goxcel in production?**  
-A: Yes, but be aware of potential breaking changes before v1.0.0 release.
-
-**Q: What Excel versions are supported?**  
-A: Generated files are compatible with Excel 2007+ (.xlsx format).
-
-**Q: Can I embed images?**  
-A: Image placeholders work in v1.0. Full embedding planned for v1.2.
-
-**Q: How do I report bugs?**  
-A: Open an issue on GitHub with template, data, and expected vs actual output.
-
-**Q: Is commercial use allowed?**  
-A: Yes! MIT License permits commercial use.
-
 See [FAQ](./docs/src/appendix/faq.md) for more questions.
 
 ## License
@@ -503,16 +485,13 @@ See [FAQ](./docs/src/appendix/faq.md) for more questions.
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
-
-- Inspired by template engines like Jinja2 and Liquid
 - Excel specification: [Office Open XML Standard](http://officeopenxml.com/)
-- Go community for excellent tools and libraries
+- Go community forexcellent tools and libraries
 
 ## Contact & Support
 
 - **GitHub Issues**: [Report bugs or request features](https://github.com/ryo-arima/goxcel/issues)
 - **Discussions**: [Ask questions and share ideas](https://github.com/ryo-arima/goxcel/discussions)
-- **Email**: ryo.arima@example.com
 
 ---
 
