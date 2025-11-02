@@ -359,33 +359,6 @@ type Worksheet struct {
 xml.MarshalIndent(worksheet, "", "  ")
 ```
 
-## Structured Logging
-
-Message code-based logging for production debugging:
-
-**Log Format**:
-```
-[timestamp] LEVEL [CODE] component/service: message {"key":"value"}
-```
-
-**Message Codes**:
-- `SY-*`: System lifecycle (startup, shutdown)
-- `FS-*`: File system operations
-- `R-*`: Repository layer (parsing, I/O)
-- `C-*`: Controller layer (commands)
-- `U-*`: UseCase layer (rendering)
-- `GXL-*`: GXL processing
-- `XLSX-*`: XLSX generation
-
-**Example Output**:
-```
-[2024-11-03T10:00:00Z] INFO [C-I1] Starting generate command {"template":"invoice.gxl"}
-[2024-11-03T10:00:01Z] DEBUG [GXL-P1] GXL parsed {"sheets":1,"nodes":15}
-[2024-11-03T10:00:02Z] INFO [U-R1] Rendering template {"rows":120}
-[2024-11-03T10:00:03Z] INFO [R-W1] Writing XLSX {"output":"output.xlsx"}
-[2024-11-03T10:00:04Z] INFO [C-C1] Generation complete {"duration":"4.2s"}
-```
-
 ## Development
 
 ### Prerequisites
