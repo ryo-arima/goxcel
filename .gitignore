@@ -1,0 +1,24 @@
+# Go build artifacts
+bin/
+dist/
+*.out
+*.exe
+*.test
+*.cover
+goxcel
+goxcel-*
+output.xlsx
+coverage.out
+coverage.html
+cpu.prof
+*.prof
+
+# macOS
+.DS_Store
+
+# IDE/editor
+.idea/
+.vscode/
+
+# GitHub Copilot instructions (sensitive project context)
+.github/instructions/
