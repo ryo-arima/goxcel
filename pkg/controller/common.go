@@ -108,8 +108,8 @@ func runGenerate(templatePath, dataPath, outputPath string, dryRun bool) error {
 
 	// Generate
 	conf.Logger.INFO(util.UR1, "Rendering template", nil)
-	r := usecase.DefaultRenderer{}
-	book, err := r.Render(context.Background(), &gt, data)
+	bookUsecase := usecase.NewDefaultBookUsecase()
+	book, err := bookUsecase.Render(context.Background(), &gt, data)
 	if err != nil {
 		conf.Logger.ERROR(util.UR2, "Failed to render template", map[string]interface{}{"error": err.Error()})
 		return fmt.Errorf("generate: %w", err)
