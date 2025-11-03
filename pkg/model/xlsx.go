@@ -232,13 +232,13 @@ type XMLSheetRef struct {
 
 // XMLWorksheet represents the xl/worksheets/sheetN.xml structure
 type XMLWorksheet struct {
-	XMLName    struct{}       `xml:"worksheet"`
-	Xmlns      string         `xml:"xmlns,attr"`
+	XMLName       struct{}          `xml:"worksheet"`
+	Xmlns         string            `xml:"xmlns,attr"`
 	SheetFormatPr *XMLSheetFormatPr `xml:"sheetFormatPr,omitempty"`
-	SheetViews *XMLSheetViews `xml:"sheetViews,omitempty"`
-	Cols       *XMLCols       `xml:"cols,omitempty"`
-	SheetData  XMLSheetData   `xml:"sheetData"`
-	MergeCells *XMLMergeCells `xml:"mergeCells,omitempty"`
+	SheetViews    *XMLSheetViews    `xml:"sheetViews,omitempty"`
+	Cols          *XMLCols          `xml:"cols,omitempty"`
+	SheetData     XMLSheetData      `xml:"sheetData"`
+	MergeCells    *XMLMergeCells    `xml:"mergeCells,omitempty"`
 }
 
 // XMLSheetFormatPr holds default row/column settings for the sheet

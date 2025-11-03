@@ -319,9 +319,9 @@ func parseGridTag(decoder *xml.Decoder, start xml.StartElement) (model.GridTag, 
 				gridContent := content.String()
 				rows := parseGridContent(gridContent)
 				return model.GridTag{
-					Content: gridContent,
-					Rows:    rows,
-					Ref:     ref,
+					Content:   gridContent,
+					Rows:      rows,
+					Ref:       ref,
 					FontName:  fontName,
 					FontSize:  fontSize,
 					FontColor: fontColor,

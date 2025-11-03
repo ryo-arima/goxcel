@@ -83,11 +83,11 @@ func splitNumberUnit(s string) (float64, string) {
 	return v, unit
 }
 
-func cmToPx(cm float64) float64      { return inchesToPx(cm / 2.54) }
-func inchesToPx(in float64) float64  { return in * 96.0 }
-func pointsToPx(pt float64) float64  { return (pt / 72.0) * 96.0 }
-func pxToPoints(px float64) float64  { return (px / 96.0) * 72.0 }
-func cmToPoints(cm float64) float64  { return (cm / 2.54) * 72.0 }
+func cmToPx(cm float64) float64     { return inchesToPx(cm / 2.54) }
+func inchesToPx(in float64) float64 { return in * 96.0 }
+func pointsToPx(pt float64) float64 { return (pt / 72.0) * 96.0 }
+func pxToPoints(px float64) float64 { return (px / 96.0) * 72.0 }
+func cmToPoints(cm float64) float64 { return (cm / 2.54) * 72.0 }
 
 // pxToColWidth converts pixels to Excel column width (characters approx)
 func pxToColWidth(px float64) float64 {

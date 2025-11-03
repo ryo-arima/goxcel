@@ -81,9 +81,9 @@ func (u *DefaultSheetUsecase) RenderSheet(ctx context.Context, sheetTag *model.S
 // renderState holds the current rendering position and context
 type renderState struct {
 	sheet     *model.Sheet
-	anchorRow int // Current anchor row (1-based)
-	anchorCol int // Current anchor column (1-based)
-	rowOffset int // Offset from anchor for sequential content
+	anchorRow int              // Current anchor row (1-based)
+	anchorCol int              // Current anchor column (1-based)
+	rowOffset int              // Offset from anchor for sequential content
 	gridStyle *model.CellStyle // Default style for current Grid
 }
 
