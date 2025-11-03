@@ -62,6 +62,25 @@ var (
 	UR1 = MCode{"U-R1", "Rendering operation success"}
 	UR2 = MCode{"U-R2", "Rendering operation failed"}
 
+	// UseCase Cell Layer Codes - UC_* (UseCase Cell)
+	UCE1 = MCode{"UC-E1", "Cell expression expansion started"}
+	UCE2 = MCode{"UC-E2", "Cell expression expansion completed"}
+	UCT1 = MCode{"UC-T1", "Cell type inference"}
+	UCR1 = MCode{"UC-R1", "Cell path resolution"}
+	UCS1 = MCode{"UC-S1", "Cell style parsing"}
+
+	// UseCase Sheet Layer Codes - US_* (UseCase Sheet)
+	USR1 = MCode{"US-R1", "Sheet rendering started"}
+	USR2 = MCode{"US-R2", "Sheet rendering completed"}
+	USG1 = MCode{"US-G1", "Grid rendering"}
+	USF1 = MCode{"US-F1", "For loop processing"}
+	USA1 = MCode{"US-A1", "Anchor positioning"}
+
+	// UseCase Book Layer Codes - UB_* (UseCase Book)
+	UBR1 = MCode{"UB-R1", "Book rendering started"}
+	UBR2 = MCode{"UB-R2", "Book rendering completed"}
+	UBN1 = MCode{"UB-N1", "Data normalization"}
+
 	// Model Layer Codes - M_* (Model)
 	MV1 = MCode{"M-V1", "Model validation success"}
 	MV2 = MCode{"M-V2", "Model validation failed"}

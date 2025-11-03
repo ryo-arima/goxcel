@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ryo-arima/goxcel/pkg/model"
+	"github.com/ryo-arima/goxcel/pkg/util"
 )
 
 // CellUsecase handles cell-level operations (value expansion, data resolution)
@@ -27,10 +28,16 @@ type DefaultCellUsecase struct {
 	dateRe     *regexp.Regexp
 	boldRe     *regexp.Regexp
 	italicRe   *regexp.Regexp
+	logger     util.LoggerInterface
 }
 
 // NewDefaultCellUsecase creates a new DefaultCellUsecase
 func NewDefaultCellUsecase() *DefaultCellUsecase {
+	return NewDefaultCellUsecaseWithLogger(nil)
+}
+
+// NewDefaultCellUsecaseWithLogger creates a new DefaultCellUsecase with logger
+func NewDefaultCellUsecaseWithLogger(logger util.LoggerInterface) *DefaultCellUsecase {
 	return &DefaultCellUsecase{
 		mustacheRe: regexp.MustCompile(`\{\{\s*([^}]+?)\s*\}\}`),
 		// Type hint syntax: {{ .value:type }}
@@ -42,6 +49,7 @@ func NewDefaultCellUsecase() *DefaultCellUsecase {
 		// Markdown style patterns
 		boldRe:   regexp.MustCompile(`\*\*(.+?)\*\*`),
 		italicRe: regexp.MustCompile(`_(.+?)_`),
+		logger:   logger,
 	}
 }
 
@@ -53,6 +61,8 @@ func (u *DefaultCellUsecase) ExpandMustache(ctxStack []map[string]any, template 
 
 // ExpandMustacheWithType replaces {{ varPath }} expressions and returns the value with its type
 func (u *DefaultCellUsecase) ExpandMustacheWithType(ctxStack []map[string]any, template string) (string, model.CellType) {
+	u.logger.DEBUG(util.UCE1, fmt.Sprintf("Expanding mustache template: %s", template), nil)
+
 	var detectedType model.CellType = model.CellTypeAuto
 	expansionCount := 0
 
@@ -79,7 +89,9 @@ func (u *DefaultCellUsecase) ExpandMustacheWithType(ctxStack []map[string]any, t
 	})
 
 	// Determine final cell type
-	return result, u.determineFinalType(result, detectedType, expansionCount)
+	finalType := u.determineFinalType(result, detectedType, expansionCount)
+	u.logger.DEBUG(util.UCE2, fmt.Sprintf("Expanded result: %s (type: %s)", result, finalType), nil)
+	return result, finalType
 }
 
 // extractExpression extracts the expression from {{ expr }}
@@ -137,6 +149,8 @@ func (u *DefaultCellUsecase) ParseTypeHint(expr string) (string, model.CellType)
 
 // InferCellType infers the cell type from a string value
 func (u *DefaultCellUsecase) InferCellType(value string) model.CellType {
+	u.logger.DEBUG(util.UCT1, fmt.Sprintf("Inferring cell type for value: %s", value), nil)
+
 	if value == "" {
 		return model.CellTypeString
 	}
@@ -191,6 +205,8 @@ func (u *DefaultCellUsecase) isDate(value string) bool {
 // Searches from the innermost (most recent) context to the outermost
 // Also handles string literals like "text" and numeric literals
 func (u *DefaultCellUsecase) ResolvePath(ctxStack []map[string]any, path string) any {
+	u.logger.DEBUG(util.UCR1, fmt.Sprintf("Resolving path: %s", path), nil)
+
 	// Try to resolve as literal first
 	if literal := u.tryResolveLiteral(path); literal != nil {
 		return literal
@@ -291,6 +307,8 @@ func (u *DefaultCellUsecase) valueToString(value any) string {
 // ParseMarkdownStyle parses markdown-style formatting and returns clean text with style
 // Supports: **bold**, _italic_
 func (u *DefaultCellUsecase) ParseMarkdownStyle(text string) (string, *model.CellStyle) {
+	u.logger.DEBUG(util.UCS1, fmt.Sprintf("Parsing markdown style: %s", text), nil)
+
 	style := &model.CellStyle{}
 	cleanText := text
 

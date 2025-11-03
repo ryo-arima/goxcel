@@ -1,8 +1,8 @@
 # GXL Format Specification
 
-**Version:** 0.1 (Draft)  
-**Status:** Evolving  
-**Last Updated:** 2024-11-03
+**Version:** 0.1.1  
+**Status:** Stable  
+**Last Updated:** 2024-11-04
 
 ---
 
@@ -123,54 +123,49 @@ An Excel file with:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 0.1 (Draft) | 2024-11-03 | Initial specification |
+| 0.1 | 2024-11-03 | Initial specification |
+| 0.1.1 | 2024-11-04 | Cell type system, markdown styles |
+
+## Current Implementation Status (v1.0)
+
+**Fully Implemented ✅**:
+- Grid layout with pipe syntax
+- Value interpolation (`{{ expr }}`)
+- For loops with nested support
+- Cell type inference and hints (`:int`, `:float`, `:bool`, `:date`)
+- Markdown styles (`**bold**`, `_italic_`)
+- Excel formulas
+- Cell merging
+- Anchor positioning
+- Component placeholders (Image, Chart, Shape)
+
+**Planned (v1.1+) ⏳**:
+- If/Else conditionals
+- Advanced styling (`<Style>` tag)
+- Number formatting
+- Data validation
+- Sheet protection
 
 ---
 
 ## Compatibility
 
 ### Excel Version Support
-- Excel 2007+ (.xlsx format)
-- Office Open XML (OOXML) specification compliance
+- Excel 2007+ (.xlsx / OOXML format)
+- LibreOffice Calc 6.0+
+- Google Sheets (import)
 
 ### Implementation Compatibility
-- **goxcel v1.0.x**: Implements GXL 0.1 (Draft)
-- Future implementations should follow this specification
-
----
-
-## Feedback and Contributions
-
-This specification is evolving based on community feedback. We welcome:
-
-- Feature requests and suggestions
-- Clarification questions
-- Bug reports in specification
-- Real-world use case examples
-
-Please contribute via:
-- GitHub Issues: Report problems or request features
-- GitHub Discussions: Ask questions and share ideas
-- Pull Requests: Propose changes to specification
-
----
-
-## License
-
-This specification is released under the Creative Commons Attribution 4.0 International License (CC BY 4.0).
-
-You are free to:
-- **Share**: Copy and redistribute the specification
-- **Adapt**: Remix, transform, and build upon the specification
-
-Under the following terms:
-- **Attribution**: You must give appropriate credit
+- **goxcel v1.0.x**: Implements GXL 0.1.1
+- Pure Go, no external dependencies
+- Go 1.20+ required
 
 ---
 
 ## Next Steps
 
-Continue reading:
-- [File Format Specification](./file-format.md) - Detailed file structure
-- [Core Tags](./core-tags.md) - Learn about the fundamental tags
-- [Examples](./examples.md) - See complete working examples
+- [Core Tags](./core-tags.md) - Fundamental tags reference
+- [Expressions](./expressions.md) - Value interpolation
+- [Control Structures](./control-structures.md) - Loops and conditionals
+- [Examples](./examples.md) - Complete working examples
+

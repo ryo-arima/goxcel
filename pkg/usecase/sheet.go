@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ryo-arima/goxcel/pkg/model"
+	"github.com/ryo-arima/goxcel/pkg/util"
 )
 
 // SheetUsecase handles sheet-level rendering operations
@@ -16,36 +17,20 @@ type SheetUsecase interface {
 // DefaultSheetUsecase is the default implementation of SheetUsecase
 type DefaultSheetUsecase struct {
 	cellUsecase CellUsecase
+	logger      util.LoggerInterface
 }
 
 // NewDefaultSheetUsecase creates a new DefaultSheetUsecase
 func NewDefaultSheetUsecase() *DefaultSheetUsecase {
-	return &DefaultSheetUsecase{
-		cellUsecase: NewDefaultCellUsecase(),
-	}
+	return NewDefaultSheetUsecaseWithLogger(nil)
 }
 
-// RenderSheet renders a single sheet from a SheetTag
-func (u *DefaultSheetUsecase) RenderSheet(ctx context.Context, sheetTag *model.SheetTag, data map[string]any) (*model.Sheet, error) {
-	sheet := model.NewSheet(sheetTag.Name)
-
-	// Initialize rendering state
-	state := &renderState{
-		sheet:     sheet,
-		anchorRow: 1,
-		anchorCol: 1,
-		rowOffset: 0,
+// NewDefaultSheetUsecaseWithLogger creates a new DefaultSheetUsecase with logger
+func NewDefaultSheetUsecaseWithLogger(logger util.LoggerInterface) *DefaultSheetUsecase {
+	return &DefaultSheetUsecase{
+		cellUsecase: NewDefaultCellUsecaseWithLogger(logger),
+		logger:      logger,
 	}
-
-	// Create initial context stack
-	ctxStack := []map[string]any{data}
-
-	// Render all nodes in the sheet
-	if err := u.renderNodes(state, ctxStack, sheetTag.Nodes); err != nil {
-		return nil, fmt.Errorf("render sheet %q: %w", sheetTag.Name, err)
-	}
-
-	return sheet, nil
 }
 
 // renderState holds the current rendering position and context
@@ -95,6 +80,8 @@ func (u *DefaultSheetUsecase) renderNode(state *renderState, ctxStack []map[stri
 
 // handleAnchor sets the anchor position
 func (u *DefaultSheetUsecase) handleAnchor(state *renderState, tag model.AnchorTag) error {
+	u.logger.DEBUG(util.USA1, fmt.Sprintf("Setting anchor position: %s", tag.Ref), nil)
+
 	row, col, err := parseA1Ref(tag.Ref)
 	if err != nil {
 		return fmt.Errorf("invalid anchor ref %q: %w", tag.Ref, err)
@@ -107,6 +94,7 @@ func (u *DefaultSheetUsecase) handleAnchor(state *renderState, tag model.AnchorT
 
 // handleGrid renders a grid (table) to the sheet
 func (u *DefaultSheetUsecase) handleGrid(state *renderState, ctxStack []map[string]any, tag model.GridTag) error {
+	u.logger.DEBUG(util.USG1, fmt.Sprintf("Rendering grid with %d rows", len(tag.Rows)), nil)
 	if tag.Ref != "" {
 		return u.handleGridWithRef(state, ctxStack, tag)
 	}
@@ -199,6 +187,8 @@ func (u *DefaultSheetUsecase) handleMerge(state *renderState, tag model.MergeTag
 
 // handleFor processes a for loop and renders its body multiple times
 func (u *DefaultSheetUsecase) handleFor(state *renderState, ctxStack []map[string]any, tag model.ForTag) error {
+	u.logger.DEBUG(util.USF1, fmt.Sprintf("Processing for loop: %s", tag.Each), nil)
+
 	varName, dataPath, err := u.parseForSyntax(tag.Each)
 	if err != nil {
 		return err

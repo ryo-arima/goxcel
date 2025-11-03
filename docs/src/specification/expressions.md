@@ -18,28 +18,38 @@ Double curly braces `{{ }}` evaluate expressions and insert the result into the 
 ### Where Interpolation Works
 
 1. **Inside Grid cells**
-2. **In tag attributes**
+2. **In tag attributes** (planned)
 3. **Within Excel formulas**
 
-### Type Hints
+### Type Hints (v1.0)
 
-GXL supports explicit type hints using colon syntax to control how values are written to Excel cells:
+Explicit type specification using colon syntax:
 
 ```
-{{ .value:int }}      # Integer number
-{{ .value:float }}    # Floating-point number
-{{ .value:number }}   # Numeric value (auto-detect int/float)
-{{ .value:bool }}     # Boolean (TRUE/FALSE)
-{{ .value:date }}     # Date value
-{{ .value:string }}   # String (force text)
+{{ .quantity:int }}      # Integer → Excel number
+{{ .price:float }}       # Float → Excel number
+{{ .amount:number }}     # Generic number
+{{ .active:bool }}       # Boolean → TRUE/FALSE
+{{ .date:date }}         # ISO date → Excel date
+{{ .name:string }}       # Force string type
 ```
 
-**Without type hint, GXL automatically infers the cell type:**
-- Values starting with `=` → Formula
-- `true`/`false` → Boolean
-- Numeric patterns → Number
-- ISO date format → Date
+**Auto-Inference (default)**:
+
+Without type hints, goxcel automatically detects:
+- Starts with `=` → Formula
+- `true`/`false` (case-insensitive) → Boolean
+- Numeric pattern (int/float) → Number  
+- ISO 8601 date (YYYY-MM-DD) → Date
 - Everything else → String
+
+**Literal Values**:
+
+```
+{{ "literal text" }}     # String literal
+{{ 123 }}                # Number literal
+{{ true }}               # Boolean literal
+```
 
 ---
 

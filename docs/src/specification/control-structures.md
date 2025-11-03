@@ -1,10 +1,12 @@
 # Control Structures
 
-Control structures enable dynamic template behavior based on data. They allow loops, conditionals, and other programmatic patterns.
+**Status:** Partially implemented (v1.0)
+
+Control structures enable dynamic template behavior based on data.
 
 ---
 
-## For Loop
+## For Loop (Implemented ✅)
 
 Iterates over array data, expanding rows downward for each element.
 
@@ -620,7 +622,13 @@ Each nesting level multiplies row count:
 |---------|--------|---------|
 | `<For>` loops | ✅ Implemented | v1.0 |
 | Loop variables (`loop.index`, `loop.number`) | ✅ Implemented | v1.0 |
+| Nested loops | ✅ Implemented | v1.0 |
+| Array iteration | ✅ Implemented | v1.0 |
+| Map/object iteration | ✅ Implemented | v1.0 |
 | `loop.startRow`, `loop.endRow` | ⏳ Planned | v1.1 |
 | `<If>` / `<Else>` | ⏳ Planned | v1.1 |
-| `<Switch>` / `<Case>` | 💭 Under consideration | v2.0+ |
+| `<Switch>` / `<Case>` | 💭 Consideration | v2.0+ |
+
+**Legend**: ✅ Implemented | ⏳ Planned | 💭 Under consideration
+
 | `<While>` | 💭 Under consideration | TBD |

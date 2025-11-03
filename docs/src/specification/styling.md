@@ -1,97 +1,83 @@
 # Styling
 
-**Status:** Planned for v1.1+
+**Status:** Partially implemented (v1.0)
 
-The styling system allows applying visual formatting to cells and ranges.
-
----
-
-## Overview
-
-GXL will support styling through:
-1. **Inline styles**: Attributes on `<Style>` tags
-2. **Named styles**: Reusable style definitions
-3. **Style classes**: CSS-like class system
+Styling system for cell formatting using markdown syntax and type hints.
 
 ---
 
-## Style Tag
+## Implemented Features (v1.0)
 
-### Syntax
+### Markdown-Style Formatting
 
-```xml
-<Style selector="A1" name="header" />
-```
+Inline text formatting using markdown syntax:
 
-### With Inline Properties
-
-```xml
-<Style 
-  selector="A1:C1" 
-  fontFamily="Arial" 
-  fontSize="14" 
-  bold 
-  color="#333333" 
-  fillColor="#FFF8E1" 
-  hAlign="center" 
-/>
-```
-
----
-
-## Attributes
-
-### `selector` (required)
-- Cell or range in A1 notation
-- Examples: `A1`, `B2:D5`
-
-### Font Properties
-- `fontFamily`: Font name (`"Arial"`, `"Calibri"`, etc.)
-- `fontSize`: Size in points (`10`, `12`, `14`)
-- `bold`: Boolean flag
-- `italic`: Boolean flag
-- `underline`: Boolean flag
-
-### Color Properties
-- `color`: Text color (`#RRGGBB`)
-- `fillColor`: Background color (`#RRGGBB`)
-
-### Alignment Properties
-- `hAlign`: `left`, `center`, `right`
-- `vAlign`: `top`, `middle`, `bottom`
-
-### Border Properties (Planned)
-- `border`: Border style
-- `borderColor`: Border color
-
----
-
-## Examples
-
-**Header row:**
 ```xml
 <Grid>
-| Product | Price | Stock |
+| **Bold Text** | _Italic Text_ | Normal Text |
 </Grid>
-<Style selector="A1:C1" bold fillColor="#4CAF50" color="#FFFFFF" hAlign="center" />
 ```
 
-**Alternating rows (future):**
+**Supported**:
+- `**text**`: Bold
+- `_text_`: Italic
+
+**Parsing**: Automatic detection and style application during rendering.
+
+### Cell Type Hints
+
+Explicit type specification for cells:
+
 ```xml
-<Style selector="A2:C10" class="zebra-stripes" />
+<Grid>
+| {{ .quantity:int }} | {{ .price:float }} | {{ .active:bool }} |
+</Grid>
 ```
+
+**Supported Types**:
+- `:int`, `:float`, `:number` → Number
+- `:bool`, `:boolean` → Boolean
+- `:date` → Date (ISO 8601)
+- `:string` → String (explicit)
+
+**Auto-inference**: Without type hints, goxcel automatically infers types from values.
+
+---
+
+## Planned Features (v1.1+)
+
+### Style Tag
+
+```xml
+<Style selector="A1:C1" bold fillColor="#4CAF50" color="#FFFFFF" />
+```
+
+### Attributes (Future)
+
+**Font**: `fontFamily`, `fontSize`, `bold`, `italic`, `underline`  
+**Color**: `color` (text), `fillColor` (background)  
+**Alignment**: `hAlign` (left/center/right), `vAlign` (top/middle/bottom)  
+**Borders**: `border`, `borderColor`
 
 ---
 
 ## Implementation Status
 
-**v1.0:** Not implemented  
-**v1.1:** Planned (basic styling)  
-**v1.2:** Advanced styling
+| Feature | v1.0 | v1.1 | v1.2 |
+|---------|------|------|------|
+| Markdown Bold/Italic | ✅ | ✅ | ✅ |
+| Type Hints | ✅ | ✅ | ✅ |
+| Auto Type Inference | ✅ | ✅ | ✅ |
+| Style Tag | ❌ | 🔄 | ✅ |
+| Named Styles | ❌ | ❌ | 🔄 |
+| Conditional Formatting | ❌ | ❌ | ❌ |
+
+**Legend**: ✅ Implemented | 🔄 Planned | ❌ Not Planned
 
 ---
 
 ## Related
 
 - [Core Tags](./core-tags.md)
-- [Examples](./examples.md)
+- [Expressions](./expressions.md)
+
