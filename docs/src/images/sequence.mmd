@@ -1,0 +1,42 @@
+sequenceDiagram
+    participant User
+    participant CLI
+    participant Controller
+    participant BookUsecase
+    participant SheetUsecase
+    participant CellUsecase
+    participant GxlRepository
+    participant XlsxRepository
+    
+    User->>CLI: goxcel generate
+    CLI->>Controller: Initialize with config
+    Controller->>GxlRepository: Read template
+    GxlRepository-->>Controller: GXL AST
+    
+    Controller->>Controller: Load data (JSON/YAML)
+    
+    Controller->>BookUsecase: Render(gxl, data)
+    
+    loop For each sheet
+        BookUsecase->>SheetUsecase: RenderSheet(sheetTag, data)
+        
+        loop For each node
+            SheetUsecase->>SheetUsecase: Process node (Grid/For/Anchor)
+            
+            alt Grid node
+                SheetUsecase->>CellUsecase: Expand expressions
+                CellUsecase-->>SheetUsecase: Cell values with types
+            else For loop
+                SheetUsecase->>SheetUsecase: Iterate and render body
+            else Anchor
+                SheetUsecase->>SheetUsecase: Update position
+            end
+        end
+        
+        SheetUsecase-->>BookUsecase: Sheet with cells
+    end
+    
+    BookUsecase-->>Controller: Complete workbook
+    
+    Controller->>XlsxRepository: Write to file
+    XlsxRepository-->>User: .xlsx file

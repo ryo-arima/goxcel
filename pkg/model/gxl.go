@@ -27,6 +27,27 @@ type SheetTag struct {
 	Nodes []any
 }
 
+// SheetConfigTag represents <SheetConfig> for sheet-level settings
+type SheetConfigTag struct {
+	DefaultRowHeight   float64
+	DefaultColumnWidth float64
+	FreezePane         string
+	ShowGridLines      *bool
+	ShowRowColHeaders  *bool
+}
+
+// ColumnTag represents <Column> for column width settings
+type ColumnTag struct {
+	Index int     // Column number (1-based)
+	Width float64 // Width in Excel units
+}
+
+// RowTag represents <Row> for row height settings
+type RowHeightTag struct {
+	Index  int     // Row number (1-based)
+	Height float64 // Height in points
+}
+
 // CellTag represents a single cell value within a grid row.
 type CellTag struct {
 	Value string
@@ -110,13 +131,23 @@ type PivotTag struct {
 	Options     string
 }
 
-// StyleTag represents <Style> for applying formatting.
+// StyleTag represents <Style> for cell styling
 type StyleTag struct {
-	Selector   string
+	Ref        string // Cell reference or range (e.g., "A1" or "A1:C3") - replaces Selector
+	Selector   string // Deprecated: use Ref
 	Name       string
 	ID         string
 	Class      string
 	Properties map[string]string
+
+	// Direct style attributes
+	Bold      bool
+	Italic    bool
+	Underline bool
+	FontName  string
+	FontSize  int
+	FontColor string // RGB hex without # (e.g., "FF0000")
+	FillColor string // RGB hex without # (e.g., "FFFF00")
 }
 
 // IfTag represents <If cond="..."> for conditional rendering.

@@ -36,7 +36,39 @@ type CellStyle struct {
 	Bold      bool
 	Italic    bool
 	Underline bool
-	// Future: font size, color, alignment, etc.
+
+	// Color and font
+	FontName  string // e.g., "Arial", "Calibri"
+	FontSize  int    // Font size in points (e.g., 11, 14)
+	FontColor string // RGB hex color: "FF0000" for red
+	FillColor string // Cell background RGB hex: "FFFF00" for yellow
+
+	// Alignment (future)
+	HAlign string // "left", "center", "right"
+	VAlign string // "top", "middle", "bottom"
+}
+
+// ColumnWidth represents column width settings
+type ColumnWidth struct {
+	Column int     // Column number (1-based)
+	Width  float64 // Width in Excel units (default ~8.43)
+}
+
+// RowHeight represents row height settings
+type RowHeight struct {
+	Row    int     // Row number (1-based)
+	Height float64 // Height in points (default 15)
+}
+
+// SheetConfig represents sheet-level configuration
+type SheetConfig struct {
+	DefaultRowHeight   float64       // Default row height in points
+	DefaultColumnWidth float64       // Default column width in Excel units
+	ColumnWidths       []ColumnWidth // Specific column widths
+	RowHeights         []RowHeight   // Specific row heights
+	FreezePane         string        // Cell reference for freeze panes (e.g., "B2")
+	ShowGridLines      bool          // Show/hide grid lines
+	ShowRowColHeaders  bool          // Show/hide row/column headers
 }
 
 // Cell represents a single cell value.
@@ -103,10 +135,21 @@ type Sheet struct {
 	Shapes []Shape
 	Charts []Chart
 	Pivots []PivotTable
+	Config *SheetConfig // Sheet-level configuration
 }
 
 // NewSheet creates a sheet with a given name.
-func NewSheet(name string) *Sheet { return &Sheet{Name: name} }
+func NewSheet(name string) *Sheet {
+	return &Sheet{
+		Name: name,
+		Config: &SheetConfig{
+			DefaultRowHeight:   15.0,
+			DefaultColumnWidth: 8.43,
+			ShowGridLines:      true,
+			ShowRowColHeaders:  true,
+		},
+	}
+}
 
 func (s *Sheet) AddCell(c *Cell)       { s.Cells = append(s.Cells, c) }
 func (s *Sheet) AddMerge(m Merge)      { s.Merges = append(s.Merges, m) }
@@ -191,8 +234,50 @@ type XMLSheetRef struct {
 type XMLWorksheet struct {
 	XMLName    struct{}       `xml:"worksheet"`
 	Xmlns      string         `xml:"xmlns,attr"`
+	SheetViews *XMLSheetViews `xml:"sheetViews,omitempty"`
+	Cols       *XMLCols       `xml:"cols,omitempty"`
 	SheetData  XMLSheetData   `xml:"sheetData"`
 	MergeCells *XMLMergeCells `xml:"mergeCells,omitempty"`
+}
+
+// XMLSheetViews contains sheet view settings
+type XMLSheetViews struct {
+	XMLName   struct{}       `xml:"sheetViews"`
+	SheetView []XMLSheetView `xml:"sheetView"`
+}
+
+// XMLSheetView represents a sheet view
+type XMLSheetView struct {
+	XMLName           struct{} `xml:"sheetView"`
+	WorkbookViewID    int      `xml:"workbookViewId,attr"`
+	ShowGridLines     *bool    `xml:"showGridLines,attr,omitempty"`
+	ShowRowColHeaders *bool    `xml:"showRowColHeaders,attr,omitempty"`
+	Pane              *XMLPane `xml:"pane,omitempty"`
+}
+
+// XMLPane represents freeze panes
+type XMLPane struct {
+	XMLName     struct{} `xml:"pane"`
+	XSplit      int      `xml:"xSplit,attr,omitempty"`
+	YSplit      int      `xml:"ySplit,attr,omitempty"`
+	TopLeftCell string   `xml:"topLeftCell,attr,omitempty"`
+	ActivePane  string   `xml:"activePane,attr,omitempty"`
+	State       string   `xml:"state,attr,omitempty"`
+}
+
+// XMLCols contains column definitions
+type XMLCols struct {
+	XMLName struct{} `xml:"cols"`
+	Col     []XMLCol `xml:"col"`
+}
+
+// XMLCol represents a column definition
+type XMLCol struct {
+	XMLName     struct{} `xml:"col"`
+	Min         int      `xml:"min,attr"`
+	Max         int      `xml:"max,attr"`
+	Width       float64  `xml:"width,attr"`
+	CustomWidth bool     `xml:"customWidth,attr,omitempty"`
 }
 
 // XMLSheetData contains rows
@@ -203,9 +288,11 @@ type XMLSheetData struct {
 
 // XMLRow represents a row in the worksheet
 type XMLRow struct {
-	XMLName struct{}  `xml:"row"`
-	R       int       `xml:"r,attr"`
-	Cells   []XMLCell `xml:"c"`
+	XMLName      struct{}  `xml:"row"`
+	R            int       `xml:"r,attr"`
+	Height       float64   `xml:"ht,attr,omitempty"`
+	CustomHeight bool      `xml:"customHeight,attr,omitempty"`
+	Cells        []XMLCell `xml:"c"`
 }
 
 // XMLCell represents a cell in a row
@@ -274,9 +361,17 @@ type XMLFont struct {
 	XMLName struct{}      `xml:"font"`
 	Sz      XMLFontSize   `xml:"sz"`
 	Name    XMLFontName   `xml:"name"`
+	Color   *XMLFontColor `xml:"color,omitempty"`
 	B       *XMLBold      `xml:"b,omitempty"`
 	I       *XMLItalic    `xml:"i,omitempty"`
 	U       *XMLUnderline `xml:"u,omitempty"`
+}
+
+// XMLFontColor represents font color
+type XMLFontColor struct {
+	XMLName struct{} `xml:"color"`
+	RGB     string   `xml:"rgb,attr,omitempty"`
+	Theme   int      `xml:"theme,attr,omitempty"`
 }
 
 // XMLBold represents bold font
@@ -321,8 +416,22 @@ type XMLFill struct {
 
 // XMLPatternFill represents pattern fill
 type XMLPatternFill struct {
-	XMLName     struct{} `xml:"patternFill"`
-	PatternType string   `xml:"patternType,attr"`
+	XMLName     struct{}      `xml:"patternFill"`
+	PatternType string        `xml:"patternType,attr"`
+	FgColor     *XMLFillColor `xml:"fgColor,omitempty"`
+	BgColor     *XMLBgColor   `xml:"bgColor,omitempty"`
+}
+
+// XMLFillColor represents foreground fill color
+type XMLFillColor struct {
+	RGB     string `xml:"rgb,attr,omitempty"`
+	Indexed int    `xml:"indexed,attr,omitempty"`
+}
+
+// XMLBgColor represents background fill color
+type XMLBgColor struct {
+	RGB     string `xml:"rgb,attr,omitempty"`
+	Indexed int    `xml:"indexed,attr,omitempty"`
 }
 
 // XMLBorders contains border definitions

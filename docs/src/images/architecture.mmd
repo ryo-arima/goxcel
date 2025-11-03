@@ -1,0 +1,76 @@
+graph TB
+    subgraph "Input Layer"
+        GXL[GXL Template<br/>.gxl file]
+        DATA[Data File<br/>.json/.yaml]
+    end
+    
+    subgraph "Application Layer"
+        CLI[CLI Tool<br/>goxcel command]
+        LIB[Go Library<br/>import package]
+    end
+    
+    subgraph "Core Processing"
+        CONFIG[Config Layer<br/>BaseConfig + Logger]
+        CTRL[Controller Layer<br/>Command Handlers]
+        
+        subgraph "Business Logic"
+            BOOK[BookUsecase<br/>Workbook Rendering]
+            SHEET[SheetUsecase<br/>Sheet Rendering]
+            CELL[CellUsecase<br/>Cell Operations]
+        end
+        
+        subgraph "Data Access"
+            GXLREPO[GxlRepository<br/>Template Parser]
+            XLSXREPO[XlsxRepository<br/>XLSX Writer]
+        end
+        
+        subgraph "Models"
+            GXLMODEL[GXL Models<br/>AST Nodes]
+            XLSXMODEL[XLSX Models<br/>Workbook/Sheet/Cell]
+        end
+    end
+    
+    subgraph "Output Layer"
+        XLSX[Excel File<br/>.xlsx output]
+    end
+    
+    GXL --> CLI
+    DATA --> CLI
+    GXL --> LIB
+    DATA --> LIB
+    
+    CLI --> CONFIG
+    LIB --> CONFIG
+    
+    CONFIG --> CTRL
+    CTRL --> BOOK
+    
+    BOOK --> SHEET
+    SHEET --> CELL
+    
+    BOOK --> GXLREPO
+    BOOK --> XLSXREPO
+    
+    GXLREPO --> GXLMODEL
+    XLSXREPO --> XLSXMODEL
+    
+    SHEET --> GXLMODEL
+    SHEET --> XLSXMODEL
+    CELL --> XLSXMODEL
+    
+    XLSXREPO --> XLSX
+    
+    style GXL fill:#e1f5ff
+    style DATA fill:#e1f5ff
+    style CLI fill:#fff3e0
+    style LIB fill:#fff3e0
+    style CONFIG fill:#f3e5f5
+    style CTRL fill:#f3e5f5
+    style BOOK fill:#e8f5e9
+    style SHEET fill:#e8f5e9
+    style CELL fill:#e8f5e9
+    style GXLREPO fill:#fff9c4
+    style XLSXREPO fill:#fff9c4
+    style GXLMODEL fill:#fce4ec
+    style XLSXMODEL fill:#fce4ec
+    style XLSX fill:#e0f2f1

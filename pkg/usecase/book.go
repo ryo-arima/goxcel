@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ryo-arima/goxcel/pkg/config"
 	"github.com/ryo-arima/goxcel/pkg/model"
 )
 
@@ -20,7 +21,7 @@ type DefaultRenderer struct {
 // Render renders the template (backward compatibility)
 func (r DefaultRenderer) Render(ctx context.Context, t *model.GXL, data any) (*model.Book, error) {
 	if r.bookUsecase == nil {
-		r.bookUsecase = NewDefaultBookUsecase()
+		r.bookUsecase = NewBookUsecase(config.NewBaseConfig())
 	}
 	return r.bookUsecase.Render(ctx, t, data)
 }
@@ -32,13 +33,23 @@ type BookUsecase interface {
 
 // DefaultBookUsecase is the default implementation of BookUsecase
 type DefaultBookUsecase struct {
+	conf         config.BaseConfig
 	sheetUsecase SheetUsecase
 }
 
-// NewDefaultBookUsecase creates a new DefaultBookUsecase
+// NewBookUsecase creates a new BookUsecase with config
+func NewBookUsecase(conf config.BaseConfig) BookUsecase {
+	return &DefaultBookUsecase{
+		conf:         conf,
+		sheetUsecase: NewSheetUsecase(conf),
+	}
+}
+
+// NewDefaultBookUsecase creates a new DefaultBookUsecase (deprecated: use NewBookUsecase)
 func NewDefaultBookUsecase() *DefaultBookUsecase {
 	return &DefaultBookUsecase{
-		sheetUsecase: NewDefaultSheetUsecase(),
+		conf:         config.NewBaseConfig(),
+		sheetUsecase: NewSheetUsecase(config.NewBaseConfig()),
 	}
 }
 

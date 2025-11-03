@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ryo-arima/goxcel/pkg/config"
 	"github.com/ryo-arima/goxcel/pkg/model"
 	"github.com/ryo-arima/goxcel/pkg/util"
 )
@@ -22,34 +23,42 @@ type CellUsecase interface {
 
 // DefaultCellUsecase is the default implementation of CellUsecase
 type DefaultCellUsecase struct {
+	conf       config.BaseConfig
+	logger     util.LoggerInterface
 	mustacheRe *regexp.Regexp
 	typeHintRe *regexp.Regexp
 	numberRe   *regexp.Regexp
 	dateRe     *regexp.Regexp
 	boldRe     *regexp.Regexp
 	italicRe   *regexp.Regexp
-	logger     util.LoggerInterface
 }
 
-// NewDefaultCellUsecase creates a new DefaultCellUsecase
-func NewDefaultCellUsecase() *DefaultCellUsecase {
-	return NewDefaultCellUsecaseWithLogger(nil)
-}
-
-// NewDefaultCellUsecaseWithLogger creates a new DefaultCellUsecase with logger
-func NewDefaultCellUsecaseWithLogger(logger util.LoggerInterface) *DefaultCellUsecase {
+// NewCellUsecase creates a new CellUsecase with config
+func NewCellUsecase(conf config.BaseConfig) CellUsecase {
 	return &DefaultCellUsecase{
+		conf:       conf,
+		logger:     conf.Logger,
 		mustacheRe: regexp.MustCompile(`\{\{\s*([^}]+?)\s*\}\}`),
-		// Type hint syntax: {{ .value:type }}
 		typeHintRe: regexp.MustCompile(`:\s*(int|float|number|bool|boolean|date|string)\s*$`),
-		// Number pattern: optional sign, digits, optional decimal part
-		numberRe: regexp.MustCompile(`^-?\d+(\.\d+)?$`),
-		// Date pattern: ISO format YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS
-		dateRe: regexp.MustCompile(`^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?`),
-		// Markdown style patterns
-		boldRe:   regexp.MustCompile(`\*\*(.+?)\*\*`),
-		italicRe: regexp.MustCompile(`_(.+?)_`),
-		logger:   logger,
+		numberRe:   regexp.MustCompile(`^-?\d+\.?\d*$`),
+		dateRe:     regexp.MustCompile(`^\d{4}-\d{2}-\d{2}`),
+		boldRe:     regexp.MustCompile(`\*\*(.+?)\*\*`),
+		italicRe:   regexp.MustCompile(`_(.+?)_`),
+	}
+}
+
+// NewDefaultCellUsecase creates a new DefaultCellUsecase (deprecated: use NewCellUsecase)
+func NewDefaultCellUsecase() *DefaultCellUsecase {
+	conf := config.NewBaseConfig()
+	return &DefaultCellUsecase{
+		conf:       conf,
+		logger:     conf.Logger,
+		mustacheRe: regexp.MustCompile(`\{\{\s*([^}]+?)\s*\}\}`),
+		typeHintRe: regexp.MustCompile(`:\s*(int|float|number|bool|boolean|date|string)\s*$`),
+		numberRe:   regexp.MustCompile(`^-?\d+\.?\d*$`),
+		dateRe:     regexp.MustCompile(`^\d{4}-\d{2}-\d{2}`),
+		boldRe:     regexp.MustCompile(`\*\*(.+?)\*\*`),
+		italicRe:   regexp.MustCompile(`_(.+?)_`),
 	}
 }
 

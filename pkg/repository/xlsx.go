@@ -167,6 +167,16 @@ func WriteBookToFile(book *model.Book, filePath string) error {
 	zipWriter := zip.NewWriter(file)
 	defer zipWriter.Close()
 
+	// Collect all unique styles from cells
+	styleCollector := newStyleCollector()
+	for _, sheet := range book.Sheets {
+		for _, cell := range sheet.Cells {
+			if cell.Style != nil {
+				styleCollector.AddStyle(cell.Style)
+			}
+		}
+	}
+
 	// Write _rels/.rels
 	if err := writeRels(zipWriter); err != nil {
 		return err
@@ -189,7 +199,7 @@ func WriteBookToFile(book *model.Book, filePath string) error {
 
 	// Write xl/worksheets/sheet*.xml
 	for i, sheet := range book.Sheets {
-		if err := writeSheet(zipWriter, sheet, i+1); err != nil {
+		if err := writeSheetWithStyles(zipWriter, sheet, i+1, styleCollector); err != nil {
 			return err
 		}
 	}
@@ -199,8 +209,8 @@ func WriteBookToFile(book *model.Book, filePath string) error {
 		return err
 	}
 
-	// Write xl/styles.xml (minimal)
-	if err := writeStyles(zipWriter); err != nil {
+	// Write xl/styles.xml with collected styles
+	if err := writeStylesWithCollector(zipWriter, styleCollector); err != nil {
 		return err
 	}
 
@@ -358,7 +368,16 @@ func writeWorkbook(zw *zip.Writer, book *model.Book) error {
 
 // createXMLCell creates an XMLCell based on the cell type
 func createXMLCell(cell *model.Cell) model.XMLCell {
-	styleID := getCellStyleID(cell.Style)
+	return createXMLCellWithStyle(cell, nil)
+}
+
+func createXMLCellWithStyle(cell *model.Cell, styleCollector *styleCollector) model.XMLCell {
+	var styleID int
+	if styleCollector != nil {
+		styleID = styleCollector.GetStyleID(cell.Style)
+	} else {
+		styleID = getCellStyleID(cell.Style)
+	}
 
 	switch cell.Type {
 	case model.CellTypeNumber:
@@ -471,6 +490,10 @@ func getCellStyleID(style *model.CellStyle) int {
 }
 
 func writeSheet(zw *zip.Writer, sheet *model.Sheet, sheetNum int) error {
+	return writeSheetWithStyles(zw, sheet, sheetNum, nil)
+}
+
+func writeSheetWithStyles(zw *zip.Writer, sheet *model.Sheet, sheetNum int, styleCollector *styleCollector) error {
 	w, err := zw.Create(fmt.Sprintf("xl/worksheets/sheet%d.xml", sheetNum))
 	if err != nil {
 		return err
@@ -481,6 +504,22 @@ func writeSheet(zw *zip.Writer, sheet *model.Sheet, sheetNum int) error {
 		SheetData: model.XMLSheetData{
 			Rows: []model.XMLRow{},
 		},
+	}
+
+	// Add column widths if configured
+	if sheet.Config != nil && len(sheet.Config.ColumnWidths) > 0 {
+		cols := &model.XMLCols{
+			Col: []model.XMLCol{},
+		}
+		for _, cw := range sheet.Config.ColumnWidths {
+			cols.Col = append(cols.Col, model.XMLCol{
+				Min:         cw.Column,
+				Max:         cw.Column,
+				Width:       cw.Width,
+				CustomWidth: true,
+			})
+		}
+		worksheet.Cols = cols
 	}
 
 	// Group cells by row
@@ -505,8 +544,19 @@ func writeSheet(zw *zip.Writer, sheet *model.Sheet, sheetNum int) error {
 			Cells: []model.XMLCell{},
 		}
 
+		// Set row height if configured
+		if sheet.Config != nil {
+			for _, rh := range sheet.Config.RowHeights {
+				if rh.Row == row {
+					xmlRow.Height = rh.Height
+					xmlRow.CustomHeight = true
+					break
+				}
+			}
+		}
+
 		for _, cell := range cells {
-			xmlCell := createXMLCell(cell)
+			xmlCell := createXMLCellWithStyle(cell, styleCollector)
 			xmlRow.Cells = append(xmlRow.Cells, xmlCell)
 		}
 
@@ -669,6 +719,115 @@ func writeStyles(zw *zip.Writer) error {
 	return err
 }
 
+func writeStylesWithCollector(zw *zip.Writer, sc *styleCollector) error {
+	w, err := zw.Create("xl/styles.xml")
+	if err != nil {
+		return err
+	}
+
+	// Build fonts and fills dynamically from collected styles
+	fonts := []model.XMLFont{}
+	fills := []model.XMLFill{{PatternFill: model.XMLPatternFill{PatternType: "none"}}}
+	xfs := []model.XMLXf{}
+
+	for i, style := range sc.styles {
+		fontName := "Calibri"
+		fontSize := "11"
+
+		if style != nil {
+			if style.FontName != "" {
+				fontName = style.FontName
+			}
+			if style.FontSize > 0 {
+				fontSize = fmt.Sprintf("%d", style.FontSize)
+			}
+		}
+
+		font := model.XMLFont{
+			Sz:   model.XMLFontSize{Val: fontSize},
+			Name: model.XMLFontName{Val: fontName},
+		}
+
+		if style != nil {
+			if style.Bold {
+				font.B = &model.XMLBold{}
+			}
+			if style.Italic {
+				font.I = &model.XMLItalic{}
+			}
+			if style.Underline {
+				font.U = &model.XMLUnderline{}
+			}
+			if style.FontColor != "" {
+				font.Color = &model.XMLFontColor{RGB: "FF" + style.FontColor}
+			}
+		}
+
+		fonts = append(fonts, font)
+
+		// Create fill for background color
+		fillID := 0
+		if style != nil && style.FillColor != "" {
+			fill := model.XMLFill{
+				PatternFill: model.XMLPatternFill{
+					PatternType: "solid",
+					FgColor:     &model.XMLFillColor{RGB: "FF" + style.FillColor},
+					BgColor:     &model.XMLBgColor{Indexed: 64},
+				},
+			}
+			fills = append(fills, fill)
+			fillID = len(fills) - 1
+		}
+
+		xf := model.XMLXf{
+			NumFmtID: 0,
+			FontID:   i,
+			FillID:   fillID,
+			BorderID: 0,
+		}
+		xfs = append(xfs, xf)
+	}
+
+	styleSheet := model.XMLStyleSheet{
+		Xmlns: model.XMLNsSpreadsheetML,
+		Fonts: model.XMLFonts{
+			Count: len(fonts),
+			Font:  fonts,
+		},
+		Fills: model.XMLFills{
+			Count: len(fills),
+			Fill:  fills,
+		},
+		Borders: model.XMLBorders{
+			Count: 1,
+			Border: []model.XMLBorder{
+				{
+					Left:   model.XMLBorderSide{},
+					Right:  model.XMLBorderSide{},
+					Top:    model.XMLBorderSide{},
+					Bottom: model.XMLBorderSide{},
+				},
+			},
+		},
+		CellXfs: model.XMLCellXfs{
+			Count: len(xfs),
+			Xf:    xfs,
+		},
+	}
+
+	data, err := xml.MarshalIndent(styleSheet, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write([]byte(xml.Header))
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(data)
+	return err
+}
+
 func parseA1Ref(ref string) (int, int, error) {
 	if ref == "" {
 		return 0, 0, fmt.Errorf("empty ref")
@@ -698,4 +857,49 @@ func parseA1Ref(ref string) (int, int, error) {
 		row = row*10 + int(ch-'0')
 	}
 	return row, col, nil
+}
+
+// styleCollector manages unique styles and generates style IDs
+type styleCollector struct {
+	styles   []*model.CellStyle
+	styleMap map[string]int // style signature -> style ID
+}
+
+func newStyleCollector() *styleCollector {
+	return &styleCollector{
+		styles:   []*model.CellStyle{nil}, // ID 0 is always nil (default style)
+		styleMap: make(map[string]int),
+	}
+}
+
+func (sc *styleCollector) AddStyle(style *model.CellStyle) {
+	if style == nil {
+		return
+	}
+
+	sig := sc.styleSignature(style)
+	if _, exists := sc.styleMap[sig]; !exists {
+		styleID := len(sc.styles)
+		sc.styleMap[sig] = styleID
+		sc.styles = append(sc.styles, style)
+	}
+}
+
+func (sc *styleCollector) GetStyleID(style *model.CellStyle) int {
+	if style == nil {
+		return 0
+	}
+
+	sig := sc.styleSignature(style)
+	if id, exists := sc.styleMap[sig]; exists {
+		return id
+	}
+	return 0
+}
+
+func (sc *styleCollector) styleSignature(style *model.CellStyle) string {
+	return fmt.Sprintf("%v|%v|%v|%s|%d|%s|%s",
+		style.Bold, style.Italic, style.Underline,
+		style.FontName, style.FontSize,
+		style.FontColor, style.FillColor)
 }

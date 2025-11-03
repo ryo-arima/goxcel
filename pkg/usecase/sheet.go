@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ryo-arima/goxcel/pkg/config"
 	"github.com/ryo-arima/goxcel/pkg/model"
 	"github.com/ryo-arima/goxcel/pkg/util"
 )
@@ -16,21 +17,55 @@ type SheetUsecase interface {
 
 // DefaultSheetUsecase is the default implementation of SheetUsecase
 type DefaultSheetUsecase struct {
-	cellUsecase CellUsecase
+	conf        config.BaseConfig
 	logger      util.LoggerInterface
+	cellUsecase CellUsecase
 }
 
-// NewDefaultSheetUsecase creates a new DefaultSheetUsecase
-func NewDefaultSheetUsecase() *DefaultSheetUsecase {
-	return NewDefaultSheetUsecaseWithLogger(nil)
-}
-
-// NewDefaultSheetUsecaseWithLogger creates a new DefaultSheetUsecase with logger
-func NewDefaultSheetUsecaseWithLogger(logger util.LoggerInterface) *DefaultSheetUsecase {
+// NewSheetUsecase creates a new SheetUsecase with config
+func NewSheetUsecase(conf config.BaseConfig) SheetUsecase {
 	return &DefaultSheetUsecase{
-		cellUsecase: NewDefaultCellUsecaseWithLogger(logger),
-		logger:      logger,
+		conf:        conf,
+		logger:      conf.Logger,
+		cellUsecase: NewCellUsecase(conf),
 	}
+}
+
+// NewDefaultSheetUsecase creates a new DefaultSheetUsecase (deprecated: use NewSheetUsecase)
+func NewDefaultSheetUsecase() *DefaultSheetUsecase {
+	conf := config.NewBaseConfig()
+	return &DefaultSheetUsecase{
+		conf:        conf,
+		logger:      conf.Logger,
+		cellUsecase: NewCellUsecase(conf),
+	}
+}
+
+// RenderSheet renders a SheetTag with data context into a Sheet
+func (u *DefaultSheetUsecase) RenderSheet(ctx context.Context, sheetTag *model.SheetTag, data map[string]any) (*model.Sheet, error) {
+	if sheetTag == nil {
+		return nil, fmt.Errorf("sheet tag is nil")
+	}
+
+	sheet := model.NewSheet(sheetTag.Name)
+
+	// Initialize render state
+	state := &renderState{
+		sheet:     sheet,
+		anchorRow: 1,
+		anchorCol: 1,
+		rowOffset: 0,
+	}
+
+	// Create context stack from data
+	ctxStack := []map[string]any{data}
+
+	// Render all nodes in the sheet
+	if err := u.renderNodes(state, ctxStack, sheetTag.Nodes); err != nil {
+		return nil, fmt.Errorf("render sheet %q: %w", sheetTag.Name, err)
+	}
+
+	return sheet, nil
 }
 
 // renderState holds the current rendering position and context

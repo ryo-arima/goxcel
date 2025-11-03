@@ -4,6 +4,38 @@
 
 Generate Excel (.xlsx) files from human-readable grid templates. Combines Markdown-like syntax with programmatic Excel generation power.
 
+## Architecture Overview
+
+### System Architecture
+
+![goxcel Architecture](./images/architecture.svg)
+
+The architecture follows Clean Architecture principles with clear separation of concerns:
+
+- **Input Layer**: GXL templates and data files (JSON/YAML)
+- **Application Layer**: CLI tool and Go library interface
+- **Config Layer**: Dependency injection with BaseConfig and Logger
+- **Controller Layer**: Command handlers and request routing
+- **Business Logic**: Usecase layer (Book → Sheet → Cell)
+- **Data Access**: Repository layer for parsing and writing
+- **Models**: Strongly-typed data structures (GXL AST, XLSX models)
+- **Output Layer**: Generated Excel files
+
+### Processing Flow
+
+![Processing Sequence](./images/sequence.svg)
+
+The processing follows this sequence:
+
+1. **Parse**: Read GXL template and parse into AST
+2. **Load**: Read JSON/YAML data file
+3. **Render**: Transform template + data into workbook
+   - BookUsecase orchestrates sheet rendering
+   - SheetUsecase processes nodes (Grid, For, Anchor)
+   - CellUsecase expands expressions and infers types
+4. **Generate**: Create OOXML structure with styles
+5. **Write**: Output .xlsx file
+
 ## Why goxcel?
 
 - **Visual Templates**: Grid-oriented templates that look like your Excel output
@@ -50,7 +82,6 @@ goxcel generate --template report.gxl --data data.json --output report.xlsx
 - **New?** [Quick Start](./getting-started/quick-start.md)
 - **Vision?** [Mission & Strategy](./vision-strategy.md)
 - **Details?** [Specification](./specification/core-tags.md)
-- **Contribute?** [Contributing](./development/contributing.md)
 
 ## Status & License
 
