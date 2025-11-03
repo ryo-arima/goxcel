@@ -23,15 +23,28 @@ const (
 type CellType string
 
 const (
-	CellTypeString CellType = "string"
+	CellTypeString  CellType = "string"  // Text string
+	CellTypeNumber  CellType = "number"  // Numeric value
+	CellTypeBoolean CellType = "boolean" // Boolean (true/false)
+	CellTypeDate    CellType = "date"    // Date/time value
+	CellTypeFormula CellType = "formula" // Excel formula
+	CellTypeAuto    CellType = "auto"    // Auto-detect type
 )
+
+// CellStyle represents the formatting applied to a cell
+type CellStyle struct {
+	Bold      bool
+	Italic    bool
+	Underline bool
+	// Future: font size, color, alignment, etc.
+}
 
 // Cell represents a single cell value.
 type Cell struct {
-	Ref   string   // A1 reference
-	Value string   // text value (after {{ }} expansion)
-	Type  CellType // hint for writer
-	Style string   // optional style name/id applied
+	Ref   string     // A1 reference
+	Value string     // text value (after {{ }} expansion)
+	Type  CellType   // hint for writer
+	Style *CellStyle // formatting options
 }
 
 // Merge represents a merged cell range like "A1:C1".
@@ -197,10 +210,19 @@ type XMLRow struct {
 
 // XMLCell represents a cell in a row
 type XMLCell struct {
-	XMLName struct{} `xml:"c"`
-	R       string   `xml:"r,attr"`
-	T       string   `xml:"t,attr,omitempty"`
-	IS      *XMLIS   `xml:"is,omitempty"`
+	XMLName struct{}    `xml:"c"`
+	R       string      `xml:"r,attr"`
+	S       *int        `xml:"s,attr,omitempty"`
+	T       string      `xml:"t,attr,omitempty"`
+	IS      *XMLIS      `xml:"is,omitempty"`
+	V       *string     `xml:"v,omitempty"`
+	F       *XMLFormula `xml:"f,omitempty"`
+}
+
+// XMLFormula represents a cell formula
+type XMLFormula struct {
+	XMLName struct{} `xml:"f"`
+	Text    string   `xml:",chardata"`
 }
 
 // XMLIS represents inline string
@@ -249,9 +271,27 @@ type XMLFonts struct {
 
 // XMLFont represents a font
 type XMLFont struct {
-	XMLName struct{}    `xml:"font"`
-	Sz      XMLFontSize `xml:"sz"`
-	Name    XMLFontName `xml:"name"`
+	XMLName struct{}      `xml:"font"`
+	Sz      XMLFontSize   `xml:"sz"`
+	Name    XMLFontName   `xml:"name"`
+	B       *XMLBold      `xml:"b,omitempty"`
+	I       *XMLItalic    `xml:"i,omitempty"`
+	U       *XMLUnderline `xml:"u,omitempty"`
+}
+
+// XMLBold represents bold font
+type XMLBold struct {
+	XMLName struct{} `xml:"b"`
+}
+
+// XMLItalic represents italic font
+type XMLItalic struct {
+	XMLName struct{} `xml:"i"`
+}
+
+// XMLUnderline represents underline font
+type XMLUnderline struct {
+	XMLName struct{} `xml:"u"`
 }
 
 // XMLFontSize represents font size

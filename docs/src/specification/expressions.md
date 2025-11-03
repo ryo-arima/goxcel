@@ -10,6 +10,7 @@ Expressions enable dynamic content in GXL templates through value interpolation 
 
 ```
 {{ expression }}
+{{ expression:type }}
 ```
 
 Double curly braces `{{ }}` evaluate expressions and insert the result into the document.
@@ -19,6 +20,26 @@ Double curly braces `{{ }}` evaluate expressions and insert the result into the 
 1. **Inside Grid cells**
 2. **In tag attributes**
 3. **Within Excel formulas**
+
+### Type Hints
+
+GXL supports explicit type hints using colon syntax to control how values are written to Excel cells:
+
+```
+{{ .value:int }}      # Integer number
+{{ .value:float }}    # Floating-point number
+{{ .value:number }}   # Numeric value (auto-detect int/float)
+{{ .value:bool }}     # Boolean (TRUE/FALSE)
+{{ .value:date }}     # Date value
+{{ .value:string }}   # String (force text)
+```
+
+**Without type hint, GXL automatically infers the cell type:**
+- Values starting with `=` → Formula
+- `true`/`false` → Boolean
+- Numeric patterns → Number
+- ISO date format → Date
+- Everything else → String
 
 ---
 
@@ -118,7 +139,95 @@ A1: Alice | B1: alice@example.com | C1: 30
 }
 ```
 
-### Array Length
+---
+
+## Cell Type Handling
+
+GXL automatically detects and sets appropriate Excel cell types for proper data representation.
+
+### Automatic Type Inference
+
+GXL automatically infers cell types based on value patterns:
+
+```xml
+<Grid>
+| Type | Example | Result |
+| Number | {{ 42 }} | Excel numeric cell |
+| Float | {{ 3.14159 }} | Excel numeric cell |
+| Boolean | {{ true }} | Excel boolean cell (TRUE) |
+| Formula | =SUM(A1:A10) | Excel formula cell |
+| Date | {{ "2025-11-03" }} | Excel date cell |
+| String | {{ "Hello" }} | Excel text cell |
+</Grid>
+```
+
+**Inference Rules:**
+- Values starting with `=` → Formula type
+- `true` or `false` (case-insensitive) → Boolean type
+- Numeric patterns (`123`, `45.67`, `-10.5`) → Number type
+- ISO date format (`YYYY-MM-DD`) → Date type
+- Everything else → String type
+
+### Explicit Type Hints
+
+Use type hints to explicitly control cell types:
+
+```xml
+<Grid>
+| Description | Auto-detected | Type Hint |
+| Integer | {{ .quantity }} | {{ .quantity:int }} |
+| Float | {{ .price }} | {{ .price:float }} |
+| Boolean | {{ .enabled }} | {{ .enabled:bool }} |
+| Date | {{ .timestamp }} | {{ .timestamp:date }} |
+| Force String | {{ .zipCode }} | {{ .zipCode:string }} |
+</Grid>
+```
+
+**Data:**
+```json
+{
+  "quantity": 42,
+  "price": 1500.50,
+  "enabled": false,
+  "timestamp": "2025-11-03T15:30:00",
+  "zipCode": "00123"
+}
+```
+
+**Why use type hints?**
+- Force numeric values to be treated as strings (e.g., zip codes, IDs)
+- Ensure proper type when auto-detection might be ambiguous
+- Control how data is stored in Excel for formulas and calculations
+
+### Literal Values
+
+You can also use literal values with type hints:
+
+```xml
+<Grid>
+| String Literal | {{ "Hello World" }} |
+| Number Literal | {{ 42 }} |
+| Boolean Literal | {{ true }} |
+| With Type Hint | {{ "123":string }} |
+</Grid>
+```
+
+### Mixed Content
+
+When multiple expressions appear in a single cell, the result is always a string:
+
+```xml
+<Grid>
+| Description | Type |
+| Price: {{ .price }} yen | String (mixed content) |
+| Total: {{ .quantity }} items | String (mixed content) |
+| {{ .amount }} | Number (single expression) |
+</Grid>
+```
+
+---
+
+## Array Length
 
 ```xml
 <Grid>

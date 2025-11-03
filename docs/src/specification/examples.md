@@ -660,16 +660,107 @@ This document provides **complete, working examples** of GXL templates with samp
 
 ---
 
+## Example 9: Cell Types and Type Hints
+
+### Template (`cell-types.gxl`)
+
+```xml
+<Book>
+  <Sheet name="TypeDemo">
+    <Grid>
+    | Data Type | Auto-detected | With Type Hint | Description |
+    </Grid>
+    
+    <Grid>
+    | String | Hello World | {{ "Text" }} | Default text |
+    | Number | {{ .price }} | {{ .quantity:int }} | Numeric values |
+    | Float | {{ .discount }} | {{ .price:float }} | Decimal numbers |
+    | Boolean | {{ .active }} | {{ .enabled:bool }} | TRUE/FALSE |
+    | Formula | =SUM(B2:B5) | =AVERAGE(C2:C5) | Excel formulas |
+    | Date | {{ .timestamp }} | {{ .created:date }} | Date values |
+    </Grid>
+    
+    <Grid>
+    | | | | |
+    </Grid>
+    
+    <Grid>
+    | **Mixed Content** | Price: {{ .price }} yen | Total: {{ .quantity }} items | Always string |
+    </Grid>
+    
+    <Grid>
+    | | | | |
+    </Grid>
+    
+    <Grid>
+    | **Force String Type** | {{ .zipCode:string }} | {{ .id:string }} | Preserve leading zeros |
+    </Grid>
+  </Sheet>
+</Book>
+```
+
+### Data Context
+
+```json
+{
+  "price": 1500.50,
+  "quantity": 42,
+  "discount": 0.15,
+  "active": true,
+  "enabled": false,
+  "timestamp": "2025-11-03T15:30:00",
+  "created": "2025-11-03",
+  "zipCode": "00123",
+  "id": "00456"
+}
+```
+
+### Expected Output
+
+**Sheet: TypeDemo**
+
+| A | B | C | D |
+|---|---|---|---|
+| Data Type | Auto-detected | With Type Hint | Description |
+| String | Hello World | Text | Default text |
+| Number | 1500.5 (number) | 42 (number) | Numeric values |
+| Float | 0.15 (number) | 1500.5 (number) | Decimal numbers |
+| Boolean | TRUE (boolean) | FALSE (boolean) | TRUE/FALSE |
+| Formula | (calculated) | (calculated) | Excel formulas |
+| Date | 2025-11-03T15:30:00 | 2025-11-03 | Date values |
+| | | | |
+| **Mixed Content** | Price: 1500.5 yen | Total: 42 items | Always string |
+| | | | |
+| **Force String Type** | 00123 (text) | 00456 (text) | Preserve leading zeros |
+
+**Type Inference:**
+- Numbers are stored as Excel numeric cells (can be used in formulas)
+- Formulas are evaluated by Excel
+- Booleans become TRUE/FALSE
+- Dates can be formatted with Excel date formats
+- Type hints override automatic detection
+
+**Available Type Hints:**
+- `:int`, `:float`, `:number` - Numeric types
+- `:bool`, `:boolean` - Boolean types
+- `:date` - Date types
+- `:string` - Force text (preserves leading zeros)
+
+---
+
 ## Running Examples
 
 ### Using goxcel CLI
 
 ```bash
 # Render a template
-goxcel render -t invoice.gxl -d data.json -o output.xlsx
+goxcel generate -t invoice.gxl -d data.json -o output.xlsx
+
+# With YAML data
+goxcel generate -t invoice.gxl -d data.yaml -o output.xlsx
 
 # Dry run (preview structure)
-goxcel render -t invoice.gxl -d data.json --dry-run
+goxcel generate -t invoice.gxl -d data.json --dry-run
 ```
 
 ### Using goxcel as Library (Go)
@@ -678,26 +769,23 @@ goxcel render -t invoice.gxl -d data.json --dry-run
 package main
 
 import (
-    "github.com/ryo-arima/goxcel/pkg/goxcel"
+    "github.com/ryo-arima/goxcel/pkg/config"
+    "github.com/ryo-arima/goxcel/pkg/controller"
 )
 
 func main() {
-    // Load template
-    tmpl, _ := goxcel.LoadTemplate("invoice.gxl")
+    cfg := config.NewBaseConfig()
+    ctrl := controller.NewCommonController(cfg)
     
-    // Load data
-    data := map[string]interface{}{
-        "invoiceNumber": "INV-001",
-        "items": []map[string]interface{}{
-            {"name": "Widget", "quantity": 10, "price": 5.00},
-        },
+    err := ctrl.Generate(
+        "invoice.gxl",
+        "data.json",
+        "output.xlsx",
+        false, // dry-run
+    )
+    if err != nil {
+        panic(err)
     }
-    
-    // Render
-    wb, _ := tmpl.Render(data)
-    
-    // Save
-    wb.SaveAs("output.xlsx")
 }
 ```
 

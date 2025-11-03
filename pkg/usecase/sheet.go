@@ -107,12 +107,56 @@ func (u *DefaultSheetUsecase) handleAnchor(state *renderState, tag model.AnchorT
 
 // handleGrid renders a grid (table) to the sheet
 func (u *DefaultSheetUsecase) handleGrid(state *renderState, ctxStack []map[string]any, tag model.GridTag) error {
-	for _, row := range tag.Rows {
+	if tag.Ref != "" {
+		return u.handleGridWithRef(state, ctxStack, tag)
+	}
+	return u.handleGridSequential(state, ctxStack, tag)
+}
+
+// handleGridWithRef renders a grid at an absolute position
+func (u *DefaultSheetUsecase) handleGridWithRef(state *renderState, ctxStack []map[string]any, tag model.GridTag) error {
+	row, col, err := parseA1Ref(tag.Ref)
+	if err != nil {
+		return fmt.Errorf("invalid grid ref %q: %w", tag.Ref, err)
+	}
+
+	// Save and restore state for absolute positioning
+	return u.withSavedState(state, func() error {
+		state.anchorRow = row
+		state.anchorCol = col
+		state.rowOffset = 0
+		return u.renderGridRows(state, ctxStack, tag.Rows)
+	})
+}
+
+// handleGridSequential renders a grid at the current position
+func (u *DefaultSheetUsecase) handleGridSequential(state *renderState, ctxStack []map[string]any, tag model.GridTag) error {
+	return u.renderGridRows(state, ctxStack, tag.Rows)
+}
+
+// renderGridRows renders all rows in a grid
+func (u *DefaultSheetUsecase) renderGridRows(state *renderState, ctxStack []map[string]any, rows []model.GridRowTag) error {
+	for _, row := range rows {
 		if err := u.handleGridRow(state, ctxStack, row); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// withSavedState executes a function while preserving the render state
+func (u *DefaultSheetUsecase) withSavedState(state *renderState, fn func() error) error {
+	savedAnchorRow := state.anchorRow
+	savedAnchorCol := state.anchorCol
+	savedRowOffset := state.rowOffset
+
+	err := fn()
+
+	state.anchorRow = savedAnchorRow
+	state.anchorCol = savedAnchorCol
+	state.rowOffset = savedRowOffset
+
+	return err
 }
 
 // handleGridRow renders a single row of cells
@@ -121,20 +165,30 @@ func (u *DefaultSheetUsecase) handleGridRow(state *renderState, ctxStack []map[s
 
 	for colIndex, cellValue := range row.Cells {
 		col := state.anchorCol + colIndex
-		ref := toA1Ref(currentRow, col)
-
-		// Expand mustache templates and add cell
-		expandedValue := u.cellUsecase.ExpandMustache(ctxStack, cellValue)
-		cell := &model.Cell{
-			Ref:   ref,
-			Value: expandedValue,
-			Type:  model.CellTypeString,
-		}
+		cell := u.createCell(currentRow, col, cellValue, ctxStack)
 		state.sheet.AddCell(cell)
 	}
 
 	state.rowOffset++
 	return nil
+}
+
+// createCell creates a cell with proper type and style
+func (u *DefaultSheetUsecase) createCell(row, col int, cellValue string, ctxStack []map[string]any) *model.Cell {
+	ref := toA1Ref(row, col)
+
+	// Expand mustache templates and infer cell type
+	expandedValue, cellType := u.cellUsecase.ExpandMustacheWithType(ctxStack, cellValue)
+
+	// Parse markdown style formatting
+	cleanValue, style := u.cellUsecase.ParseMarkdownStyle(expandedValue)
+
+	return &model.Cell{
+		Ref:   ref,
+		Value: cleanValue,
+		Type:  cellType,
+		Style: style,
+	}
 }
 
 // handleMerge adds a cell merge to the sheet
@@ -145,53 +199,70 @@ func (u *DefaultSheetUsecase) handleMerge(state *renderState, tag model.MergeTag
 
 // handleFor processes a for loop and renders its body multiple times
 func (u *DefaultSheetUsecase) handleFor(state *renderState, ctxStack []map[string]any, tag model.ForTag) error {
-	// Parse "Each" field like "item in items"
-	parts := strings.Fields(tag.Each)
-	if len(parts) != 3 || parts[1] != "in" {
-		return fmt.Errorf("invalid For syntax: %q (expected: 'varName in dataPath')", tag.Each)
+	varName, dataPath, err := u.parseForSyntax(tag.Each)
+	if err != nil {
+		return err
 	}
 
-	varName := parts[0]
-	dataPath := parts[2]
-
-	// Resolve the array from data context
 	items := u.cellUsecase.ResolvePath(ctxStack, dataPath)
+	return u.iterateAndRender(state, ctxStack, varName, items, tag.Body)
+}
 
-	// Handle different array types
+// parseForSyntax parses "varName in dataPath" syntax
+func (u *DefaultSheetUsecase) parseForSyntax(each string) (varName, dataPath string, err error) {
+	parts := strings.Fields(each)
+	if len(parts) != 3 || parts[1] != "in" {
+		return "", "", fmt.Errorf("invalid For syntax: %q (expected: 'varName in dataPath')", each)
+	}
+	return parts[0], parts[2], nil
+}
+
+// iterateAndRender iterates over items and renders the body for each
+func (u *DefaultSheetUsecase) iterateAndRender(state *renderState, ctxStack []map[string]any, varName string, items any, body []any) error {
 	switch arr := items.(type) {
 	case []any:
-		for i, item := range arr {
-			scope := map[string]any{
-				varName: item,
-				"loop": map[string]any{
-					"index":  i,
-					"number": i + 1,
-				},
-			}
-			newStack := append(ctxStack, scope)
-			if err := u.renderNodes(state, newStack, tag.Body); err != nil {
-				return err
-			}
-		}
+		return u.renderLoop(state, ctxStack, varName, arr, body)
 	case []map[string]any:
-		for i, item := range arr {
-			scope := map[string]any{
-				varName: item,
-				"loop": map[string]any{
-					"index":  i,
-					"number": i + 1,
-				},
-			}
-			newStack := append(ctxStack, scope)
-			if err := u.renderNodes(state, newStack, tag.Body); err != nil {
-				return err
-			}
-		}
+		return u.renderMapLoop(state, ctxStack, varName, arr, body)
 	default:
 		// Not an iterable type, skip
+		return nil
 	}
+}
 
+// renderLoop renders loop body for []any array
+func (u *DefaultSheetUsecase) renderLoop(state *renderState, ctxStack []map[string]any, varName string, items []any, body []any) error {
+	for i, item := range items {
+		scope := u.createLoopScope(varName, item, i)
+		newStack := append(ctxStack, scope)
+		if err := u.renderNodes(state, newStack, body); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// renderMapLoop renders loop body for []map[string]any array
+func (u *DefaultSheetUsecase) renderMapLoop(state *renderState, ctxStack []map[string]any, varName string, items []map[string]any, body []any) error {
+	for i, item := range items {
+		scope := u.createLoopScope(varName, item, i)
+		newStack := append(ctxStack, scope)
+		if err := u.renderNodes(state, newStack, body); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// createLoopScope creates a loop variable scope
+func (u *DefaultSheetUsecase) createLoopScope(varName string, item any, index int) map[string]any {
+	return map[string]any{
+		varName: item,
+		"loop": map[string]any{
+			"index":  index,
+			"number": index + 1,
+		},
+	}
 }
 
 // handleImage adds an image to the sheet

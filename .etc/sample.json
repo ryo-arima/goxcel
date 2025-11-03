@@ -1,7 +1,81 @@
 {
-  "items": [
-    {"name": "Apple", "qty": 10, "price": 100},
-    {"name": "Banana", "qty": 20, "price": 200},
-    {"name": "Cherry", "qty": 30, "price": 300}
-  ]
+  "company": {
+    "name": "Tech Solutions Inc.",
+    "employees": 250,
+    "revenue": 5000000.50,
+    "address": {
+      "city": "Tokyo",
+      "country": "Japan"
+    },
+    "contact": {
+      "email": "info@techsolutions.com",
+      "phone": "+81-3-1234-5678"
+    }
+  },
+  "product": {
+    "name": "Premium Widget",
+    "price": 1500.50,
+    "discount": 0.15,
+    "quantity": 42,
+    "inStock": true,
+    "featured": false
+  },
+  "order": {
+    "date": "2025-11-03",
+    "deliveryDate": "2025-11-10T15:30:00"
+  },
+  "products": [
+    {
+      "name": "Widget Pro",
+      "price": 2500.00,
+      "quantity": 10
+    },
+    {
+      "name": "Gadget Plus",
+      "price": 3200.50,
+      "quantity": 5
+    },
+    {
+      "name": "Tool Kit",
+      "price": 1800.75,
+      "quantity": 8
+    },
+    {
+      "name": "Accessory Set",
+      "price": 950.00,
+      "quantity": 15
+    }
+  ],
+  "customer": {
+    "name": "Acme Corporation",
+    "address": "123 Business St, Shibuya, Tokyo"
+  },
+  "invoice": {
+    "number": "INV-2025-001",
+    "date": "2025-11-03",
+    "dueDate": "2025-12-03",
+    "taxRate": 10,
+    "items": [
+      {
+        "description": "Web Development Service",
+        "quantity": 40,
+        "unitPrice": 15000.00
+      },
+      {
+        "description": "UI/UX Design",
+        "quantity": 20,
+        "unitPrice": 12000.00
+      },
+      {
+        "description": "Technical Consultation",
+        "quantity": 10,
+        "unitPrice": 20000.00
+      },
+      {
+        "description": "Server Maintenance",
+        "quantity": 12,
+        "unitPrice": 8000.00
+      }
+    ]
+  }
 }

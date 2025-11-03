@@ -191,6 +191,7 @@ Defines a grid of cells using pipe-delimited rows.
 
 ### Syntax
 
+**Basic usage:**
 ```xml
 <Grid>
 | Cell A1 | Cell B1 | Cell C1 |
@@ -198,6 +199,53 @@ Defines a grid of cells using pipe-delimited rows.
 | Cell A3 | Cell B3 | Cell C3 |
 </Grid>
 ```
+
+**With absolute positioning (v1.0+):**
+```xml
+<Grid ref="D5">
+| Cell D5 | Cell E5 |
+| Cell D6 | Cell E6 |
+</Grid>
+```
+
+### Attributes
+
+#### `ref` (optional, v1.0+)
+- **Type**: String (A1 notation)
+- **Description**: Absolute starting position for the grid
+- **Default**: Current cursor position
+- **Examples**: `"A1"`, `"B5"`, `"D10"`
+- **Behavior**: When specified, the grid is placed at the absolute position without affecting the cursor position
+
+**Example - Grid with ref:**
+```xml
+<!-- Sequential grids -->
+<Grid>
+| Header 1 | Header 2 |
+</Grid>
+
+<Grid>
+| Data 1 | Data 2 |
+</Grid>
+
+<!-- Absolute position at E1 (doesn't affect cursor) -->
+<Grid ref="E1">
+| Side Note |
+</Grid>
+
+<!-- Continues from A3 (after the first two grids) -->
+<Grid>
+| Row 3 | More Data |
+</Grid>
+```
+
+**Result:**
+| | A | B | C | D | E |
+|-|---|---|---|---|---|
+| 1 | Header 1 | Header 2 | | | Side Note |
+| 2 | Data 1 | Data 2 | | | |
+| 3 | Row 3 | More Data | | | |
+
 
 ### Structure
 
@@ -276,11 +324,12 @@ Multiple consecutive pipes create empty cells:
 
 ### Positioning
 
-Grid cells are placed relative to the **current cursor position**:
+Grid cells are placed relative to the **current cursor position** (unless `ref` is specified):
 - Starts at `A1` by default
 - Advances after each `<Grid>` block
 - Can be reset with `<Anchor>`
 
+**Sequential positioning:**
 ```xml
 <!-- Starts at A1 -->
 <Grid>
@@ -291,13 +340,43 @@ Grid cells are placed relative to the **current cursor position**:
 <Grid>
 | Row 2 |
 </Grid>
+```
 
+**With Anchor:**
+```xml
 <!-- Reset to E1 -->
 <Anchor ref="E1" />
 <Grid>
 | Over here |
 </Grid>
 ```
+
+**With Grid ref attribute (v1.0+):**
+```xml
+<!-- Normal sequential -->
+<Grid>
+| Row 1 |
+</Grid>
+
+<!-- Absolute position (cursor stays at A2) -->
+<Grid ref="E1">
+| Absolute |
+</Grid>
+
+<!-- Continues at A2 -->
+<Grid>
+| Row 2 |
+</Grid>
+```
+
+**Comparison: Anchor vs Grid ref**
+
+| Feature | `<Anchor>` | `<Grid ref="">` |
+|---------|------------|-----------------|
+| Scope | Affects all subsequent content | Only affects that grid |
+| Cursor Movement | Moves cursor permanently | Doesn't affect cursor |
+| Use Case | Change layout flow | Place independent content |
+
 
 ### Multi-column Grids
 
@@ -426,9 +505,14 @@ By default, content flows from top-left (A1) downward. Use `<Anchor>` to:
 ### Best Practices
 
 1. **Use sparingly**: Let content flow naturally when possible
-2. **Document reasons**: Add comments explaining why specific positioning is needed
-3. **Avoid overlaps**: Ensure anchored content doesn't overlap
-4. **Test thoroughly**: Verify layout with different data sizes
+2. **Prefer Grid ref**: For independent content, use `<Grid ref="">` instead of `<Anchor>` to avoid affecting layout flow
+3. **Document reasons**: Add comments explaining why specific positioning is needed
+4. **Avoid overlaps**: Ensure anchored content doesn't overlap
+5. **Test thoroughly**: Verify layout with different data sizes
+
+**When to use Anchor vs Grid ref:**
+- **Use `<Anchor>`**: When you want to change the layout flow permanently (e.g., switching from top section to side panel)
+- **Use `<Grid ref="">`**: When you want to place independent content (e.g., logo, side notes) without affecting the main flow
 
 ---
 

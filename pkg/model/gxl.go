@@ -47,6 +47,7 @@ type ColTag struct {
 type GridTag struct {
 	Content string
 	Rows    []GridRowTag
+	Ref     string // Optional: Starting cell reference (e.g., "A1", "B5")
 }
 
 // GridRowTag represents a single row parsed from Grid content.

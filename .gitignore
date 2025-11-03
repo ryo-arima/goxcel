@@ -28,5 +28,5 @@ docs/dist/
 .github/instructions/
 
 # Generated files
-output.xlsx
+*.xlsx
 *.xlsx#*

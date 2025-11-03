@@ -356,6 +356,120 @@ func writeWorkbook(zw *zip.Writer, book *model.Book) error {
 	return err
 }
 
+// createXMLCell creates an XMLCell based on the cell type
+func createXMLCell(cell *model.Cell) model.XMLCell {
+	styleID := getCellStyleID(cell.Style)
+
+	switch cell.Type {
+	case model.CellTypeNumber:
+		return createNumberCell(cell, styleID)
+	case model.CellTypeBoolean:
+		return createBooleanCell(cell, styleID)
+	case model.CellTypeFormula:
+		return createFormulaCell(cell, styleID)
+	case model.CellTypeDate:
+		return createDateCell(cell, styleID)
+	default:
+		return createStringCell(cell, styleID)
+	}
+}
+
+// createNumberCell creates a numeric cell
+func createNumberCell(cell *model.Cell, styleID int) model.XMLCell {
+	xmlCell := model.XMLCell{
+		R: cell.Ref,
+		V: &cell.Value,
+	}
+	applyStyle(&xmlCell, styleID)
+	return xmlCell
+}
+
+// createBooleanCell creates a boolean cell
+func createBooleanCell(cell *model.Cell, styleID int) model.XMLCell {
+	boolValue := convertToExcelBoolean(cell.Value)
+	xmlCell := model.XMLCell{
+		R: cell.Ref,
+		T: "b",
+		V: &boolValue,
+	}
+	applyStyle(&xmlCell, styleID)
+	return xmlCell
+}
+
+// createFormulaCell creates a formula cell
+func createFormulaCell(cell *model.Cell, styleID int) model.XMLCell {
+	formulaText := stripLeadingEquals(cell.Value)
+	xmlCell := model.XMLCell{
+		R: cell.Ref,
+		F: &model.XMLFormula{Text: formulaText},
+	}
+	applyStyle(&xmlCell, styleID)
+	return xmlCell
+}
+
+// createDateCell creates a date cell
+func createDateCell(cell *model.Cell, styleID int) model.XMLCell {
+	// TODO: Convert to Excel date serial number and apply date format
+	xmlCell := model.XMLCell{
+		R:  cell.Ref,
+		T:  "inlineStr",
+		IS: &model.XMLIS{T: cell.Value},
+	}
+	applyStyle(&xmlCell, styleID)
+	return xmlCell
+}
+
+// createStringCell creates a string cell
+func createStringCell(cell *model.Cell, styleID int) model.XMLCell {
+	xmlCell := model.XMLCell{
+		R:  cell.Ref,
+		T:  "inlineStr",
+		IS: &model.XMLIS{T: cell.Value},
+	}
+	applyStyle(&xmlCell, styleID)
+	return xmlCell
+}
+
+// convertToExcelBoolean converts string boolean to Excel format (0 or 1)
+func convertToExcelBoolean(value string) string {
+	if value == "true" || value == "TRUE" || value == "1" {
+		return "1"
+	}
+	return "0"
+}
+
+// stripLeadingEquals removes leading = from formula
+func stripLeadingEquals(formula string) string {
+	if len(formula) > 0 && formula[0] == '=' {
+		return formula[1:]
+	}
+	return formula
+}
+
+// applyStyle applies style ID to cell if non-zero
+func applyStyle(xmlCell *model.XMLCell, styleID int) {
+	if styleID > 0 {
+		xmlCell.S = &styleID
+	}
+}
+
+// getCellStyleID returns the style ID based on cell formatting
+func getCellStyleID(style *model.CellStyle) int {
+	if style == nil {
+		return 0 // Normal style
+	}
+
+	if style.Bold && style.Italic {
+		return 3 // Bold + Italic
+	} else if style.Bold {
+		return 1 // Bold only
+	} else if style.Italic {
+		return 2 // Italic only
+	}
+
+	return 0 // Normal
+}
+
 func writeSheet(zw *zip.Writer, sheet *model.Sheet, sheetNum int) error {
 	w, err := zw.Create(fmt.Sprintf("xl/worksheets/sheet%d.xml", sheetNum))
 	if err != nil {
@@ -392,13 +506,8 @@ func writeSheet(zw *zip.Writer, sheet *model.Sheet, sheetNum int) error {
 		}
 
 		for _, cell := range cells {
-			xmlRow.Cells = append(xmlRow.Cells, model.XMLCell{
-				R: cell.Ref,
-				T: "inlineStr",
-				IS: &model.XMLIS{
-					T: cell.Value,
-				},
-			})
+			xmlCell := createXMLCell(cell)
+			xmlRow.Cells = append(xmlRow.Cells, xmlCell)
 		}
 
 		worksheet.SheetData.Rows = append(worksheet.SheetData.Rows, xmlRow)
@@ -465,11 +574,31 @@ func writeStyles(zw *zip.Writer) error {
 	styleSheet := model.XMLStyleSheet{
 		Xmlns: model.XMLNsSpreadsheetML,
 		Fonts: model.XMLFonts{
-			Count: 1,
+			Count: 4,
 			Font: []model.XMLFont{
+				// Font 0: Normal
 				{
 					Sz:   model.XMLFontSize{Val: "11"},
 					Name: model.XMLFontName{Val: "Calibri"},
+				},
+				// Font 1: Bold
+				{
+					Sz:   model.XMLFontSize{Val: "11"},
+					Name: model.XMLFontName{Val: "Calibri"},
+					B:    &model.XMLBold{},
+				},
+				// Font 2: Italic
+				{
+					Sz:   model.XMLFontSize{Val: "11"},
+					Name: model.XMLFontName{Val: "Calibri"},
+					I:    &model.XMLItalic{},
+				},
+				// Font 3: Bold + Italic
+				{
+					Sz:   model.XMLFontSize{Val: "11"},
+					Name: model.XMLFontName{Val: "Calibri"},
+					B:    &model.XMLBold{},
+					I:    &model.XMLItalic{},
 				},
 			},
 		},
@@ -493,11 +622,33 @@ func writeStyles(zw *zip.Writer) error {
 			},
 		},
 		CellXfs: model.XMLCellXfs{
-			Count: 1,
+			Count: 4,
 			Xf: []model.XMLXf{
+				// Style 0: Normal
 				{
 					NumFmtID: 0,
 					FontID:   0,
+					FillID:   0,
+					BorderID: 0,
+				},
+				// Style 1: Bold
+				{
+					NumFmtID: 0,
+					FontID:   1,
+					FillID:   0,
+					BorderID: 0,
+				},
+				// Style 2: Italic
+				{
+					NumFmtID: 0,
+					FontID:   2,
+					FillID:   0,
+					BorderID: 0,
+				},
+				// Style 3: Bold + Italic
+				{
+					NumFmtID: 0,
+					FontID:   3,
 					FillID:   0,
 					BorderID: 0,
 				},

@@ -60,6 +60,8 @@ goxcel transforms human-readable `.gxl` templates into Excel `.xlsx` files using
 - ✅ **Template-based generation** with `.gxl` format
 - ✅ **Grid syntax** with pipe-delimited tables
 - ✅ **Variable interpolation** with `{{ expr }}` syntax
+- ✅ **Cell type inference**: Automatic detection of numbers, formulas, booleans, dates
+- ✅ **Type hints**: Explicit type control with `{{ value:type }}` syntax
 - ✅ **Control structures**: `<For>` loops (v1.0), `<If>` conditionals (planned v1.1)
 - ✅ **Excel formulas** with cell references
 - ✅ **Cell merging** for headers and layouts
@@ -179,6 +181,24 @@ make docs-serve
 </Grid>
 ```
 
+**Grid with Absolute Position** (v1.0+)
+```xml
+<!-- Normal sequential grid -->
+<Grid>
+| Main Content |
+</Grid>
+
+<!-- Absolute position at E1 (doesn't affect cursor) -->
+<Grid ref="E1">
+| Side Note |
+</Grid>
+
+<!-- Continues after first grid -->
+<Grid>
+| More Content |
+</Grid>
+```
+
 **Variable Interpolation**
 ```xml
 <Grid>
@@ -233,6 +253,44 @@ make docs-serve
 | =SUM(A1:A10) |
 | =AVERAGE(B:B) |
 | =IF(C1>100,"High","Low") |
+</Grid>
+```
+
+**Cell Types and Type Hints** (v1.0+)
+
+GXL automatically infers cell types, but you can use type hints for explicit control:
+
+```xml
+<Grid>
+| Type | Auto-detected | With Type Hint |
+| Number | {{ 42 }} | {{ .quantity:int }} |
+| Float | {{ 3.14 }} | {{ .price:float }} |
+| Boolean | {{ true }} | {{ .enabled:bool }} |
+| Date | {{ "2025-11-03" }} | {{ .timestamp:date }} |
+| Formula | =SUM(A1:A10) | =AVERAGE(B:B) |
+| String | {{ "Hello" }} | {{ .zipCode:string }} |
+</Grid>
+```
+
+**Type Inference Rules:**
+- Values starting with `=` → Formula
+- `true`/`false` → Boolean
+- Numeric patterns → Number
+- ISO date format → Date
+- Everything else → String
+
+**Available Type Hints:**
+- `:int`, `:float`, `:number` - Numeric values
+- `:bool`, `:boolean` - Boolean values
+- `:date` - Date values
+- `:string` - Force text (useful for zip codes, IDs)
+
+**Literal Values:**
+```xml
+<Grid>
+| {{ "Text" }} | String literal |
+| {{ 123 }} | Number literal |
+| {{ true }} | Boolean literal |
 </Grid>
 ```
 

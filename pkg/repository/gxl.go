@@ -257,6 +257,14 @@ func parseNodeTag(decoder *xml.Decoder, start xml.StartElement) (any, error) {
 func parseGridTag(decoder *xml.Decoder, start xml.StartElement) (model.GridTag, error) {
 	var content strings.Builder
 
+	// Extract ref attribute if present
+	var ref string
+	for _, attr := range start.Attr {
+		if attr.Name.Local == "ref" {
+			ref = attr.Value
+		}
+	}
+
 	for {
 		token, err := decoder.Token()
 		if err != nil {
@@ -273,6 +281,7 @@ func parseGridTag(decoder *xml.Decoder, start xml.StartElement) (model.GridTag, 
 				return model.GridTag{
 					Content: gridContent,
 					Rows:    rows,
+					Ref:     ref,
 				}, nil
 			}
 		}
@@ -290,13 +299,22 @@ func parseGridContent(content string) []model.GridRowTag {
 			continue
 		}
 
+		// Split by pipe and process
 		parts := strings.Split(line, "|")
+
+		// Remove first and last element if they are empty (from leading/trailing pipes)
+		if len(parts) > 0 && parts[0] == "" {
+			parts = parts[1:]
+		}
+		if len(parts) > 0 && parts[len(parts)-1] == "" {
+			parts = parts[:len(parts)-1]
+		}
+
+		// Build cells array, preserving empty cells
 		var cells []string
 		for _, part := range parts {
-			part = strings.TrimSpace(part)
-			if part != "" {
-				cells = append(cells, part)
-			}
+			// Trim spaces but keep the cell even if empty
+			cells = append(cells, strings.TrimSpace(part))
 		}
 
 		if len(cells) > 0 {
