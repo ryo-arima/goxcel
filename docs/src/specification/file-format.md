@@ -192,6 +192,50 @@ Same as:
 
 ---
 
+## Automatic Formatting (CLI)
+
+goxcel includes a template formatter available via the CLI:
+
+```bash
+goxcel format <file.gxl>           # pretty-print to stdout
+goxcel format -w <file.gxl>        # overwrite in place
+goxcel format -o out.gxl <file.gxl>
+```
+
+Rules applied by the formatter:
+
+- Indentation: tags are indented with 2 spaces per nesting level
+- Empty elements: when a tag has no text and no children, it is inlined on one line
+  - Example: `<Merge range="A1:C1"> </Merge>`
+- Blank lines: consecutive blank lines outside content are collapsed (no double blank lines)
+- Grid alignment: inside `<Grid>`, pipe-delimited rows are aligned so that `|` characters line up by column
+- Preservation: non-whitespace character data and XML comments are preserved
+
+Before and After:
+
+Before
+```xml
+<Grid>
+
+  | A |  B   |C|
+  | 1| 22 |333|
+
+</Grid>
+<Merge range="A1:C1">
+</Merge>
+```
+
+After
+```xml
+<Grid>
+  | A | B  | C   |
+  | 1 | 22 | 333 |
+</Grid>
+<Merge range="A1:C1"> </Merge>
+```
+
+Note: Grid alignment uses character count (runes) for width; full-width East Asian display widths are not accounted for.
+
 ## Case Sensitivity
 
 ### Tag Names

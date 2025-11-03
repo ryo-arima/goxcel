@@ -81,10 +81,9 @@ func (u *DefaultSheetUsecase) RenderSheet(ctx context.Context, sheetTag *model.S
 // renderState holds the current rendering position and context
 type renderState struct {
 	sheet     *model.Sheet
-	anchorRow int              // Current anchor row (1-based)
-	anchorCol int              // Current anchor column (1-based)
-	rowOffset int              // Offset from anchor for sequential content
-	gridStyle *model.CellStyle // Default style for current Grid
+	anchorRow int // Current anchor row (1-based)
+	anchorCol int // Current anchor column (1-based)
+	rowOffset int // Offset from anchor for sequential content
 }
 
 // renderNodes processes a list of nodes (tags) and renders them to the sheet
@@ -159,25 +158,27 @@ func (u *DefaultSheetUsecase) handleGridWithRef(state *renderState, ctxStack []m
 		state.anchorRow = row
 		state.anchorCol = col
 		state.rowOffset = 0
-		state.gridStyle = gridTagToStyle(tag)
-		return u.renderGridRows(state, ctxStack, tag.Rows)
+		base := gridTagToStyle(tag)
+		return u.renderGridRowsWithStyle(state, ctxStack, tag.Rows, base)
 	})
 }
 
 // handleGridSequential renders a grid at the current position
 func (u *DefaultSheetUsecase) handleGridSequential(state *renderState, ctxStack []map[string]any, tag model.GridTag) error {
-	// Save/restore grid style around this grid
-	saved := state.gridStyle
-	state.gridStyle = gridTagToStyle(tag)
-	err := u.renderGridRows(state, ctxStack, tag.Rows)
-	state.gridStyle = saved
-	return err
+	base := gridTagToStyle(tag)
+	return u.renderGridRowsWithStyle(state, ctxStack, tag.Rows, base)
 }
 
 // renderGridRows renders all rows in a grid
 func (u *DefaultSheetUsecase) renderGridRows(state *renderState, ctxStack []map[string]any, rows []model.GridRowTag) error {
+	// legacy: no base style
+	return u.renderGridRowsWithStyle(state, ctxStack, rows, nil)
+}
+
+// renderGridRowsWithStyle renders all rows with a provided base style
+func (u *DefaultSheetUsecase) renderGridRowsWithStyle(state *renderState, ctxStack []map[string]any, rows []model.GridRowTag, baseStyle *model.CellStyle) error {
 	for _, row := range rows {
-		if err := u.handleGridRow(state, ctxStack, row); err != nil {
+		if err := u.handleGridRowWithStyle(state, ctxStack, row, baseStyle); err != nil {
 			return err
 		}
 	}
@@ -189,25 +190,27 @@ func (u *DefaultSheetUsecase) withSavedState(state *renderState, fn func() error
 	savedAnchorRow := state.anchorRow
 	savedAnchorCol := state.anchorCol
 	savedRowOffset := state.rowOffset
-	savedGridStyle := state.gridStyle
 
 	err := fn()
 
 	state.anchorRow = savedAnchorRow
 	state.anchorCol = savedAnchorCol
 	state.rowOffset = savedRowOffset
-	state.gridStyle = savedGridStyle
 
 	return err
 }
 
 // handleGridRow renders a single row of cells
 func (u *DefaultSheetUsecase) handleGridRow(state *renderState, ctxStack []map[string]any, row model.GridRowTag) error {
+	return u.handleGridRowWithStyle(state, ctxStack, row, nil)
+}
+
+func (u *DefaultSheetUsecase) handleGridRowWithStyle(state *renderState, ctxStack []map[string]any, row model.GridRowTag, baseStyle *model.CellStyle) error {
 	currentRow := state.anchorRow + state.rowOffset
 
 	for colIndex, cellValue := range row.Cells {
 		col := state.anchorCol + colIndex
-		cell := u.createCell(currentRow, col, cellValue, ctxStack, state.gridStyle)
+		cell := u.createCell(currentRow, col, cellValue, ctxStack, baseStyle)
 		state.sheet.AddCell(cell)
 	}
 
@@ -255,6 +258,31 @@ func gridTagToStyle(tag model.GridTag) *model.CellStyle {
 		st.FillColor = tag.FillColor
 		has = true
 	}
+	if tag.BorderStyle != "" {
+		b := &model.CellBorder{Style: tag.BorderStyle, Color: tag.BorderColor}
+		// sides
+		sides := strings.Split(tag.BorderSides, ",")
+		if len(sides) == 0 || tag.BorderSides == "" || tag.BorderSides == "all" {
+			b.Top, b.Right, b.Bottom, b.Left = true, true, true, true
+		} else {
+			for _, s := range sides {
+				switch strings.TrimSpace(s) {
+				case "all":
+					b.Top, b.Right, b.Bottom, b.Left = true, true, true, true
+				case "top":
+					b.Top = true
+				case "right":
+					b.Right = true
+				case "bottom":
+					b.Bottom = true
+				case "left":
+					b.Left = true
+				}
+			}
+		}
+		st.Border = b
+		has = true
+	}
 	if !has {
 		return nil
 	}
@@ -298,6 +326,12 @@ func mergeStyles(a, b *model.CellStyle) *model.CellStyle {
 	}
 	if b.FillColor != "" {
 		c.FillColor = b.FillColor
+	}
+	// Border overlay: if b has border, override entirely
+	if b.Border != nil {
+		// Copy
+		cb := *b.Border
+		c.Border = &cb
 	}
 	// Alignment (future)
 	if b.HAlign != "" {

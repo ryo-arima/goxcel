@@ -245,6 +245,23 @@ goxcel generate \
 - [Examples](../specification/examples.md) - More complex examples
 - [Troubleshooting](../appendix/troubleshooting.md) - Common issues
 
+## Optional: Format Your Template
+
+Use the built-in formatter to keep your `.gxl` templates readable and consistent:
+
+```bash
+goxcel format template.gxl                # print to stdout
+goxcel format -w template.gxl             # overwrite in place
+goxcel format -o formatted.gxl template.gxl
+```
+
+What it does:
+- Pretty-prints tags with indentation
+- Inlines empty tags as a single line: `<Merge range="A1:C1"> </Merge>`
+- Removes double blank lines outside content
+- Aligns `|` columns inside `<Grid>` so tables are easy to read
+- Preserves comments and significant text
+
 ## Quick Reference
 
 ### Template Structure

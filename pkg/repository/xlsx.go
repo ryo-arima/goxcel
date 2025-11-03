@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ryo-arima/goxcel/pkg/config"
 	"github.com/ryo-arima/goxcel/pkg/model"
@@ -735,9 +736,15 @@ func writeStylesWithCollector(zw *zip.Writer, sc *styleCollector) error {
 		return err
 	}
 
-	// Build fonts and fills dynamically from collected styles
+	// Build fonts, fills, and borders dynamically from collected styles
 	fonts := []model.XMLFont{}
 	fills := []model.XMLFill{{PatternFill: model.XMLPatternFill{PatternType: "none"}}}
+	borders := []model.XMLBorder{{
+		Left:   model.XMLBorderSide{},
+		Right:  model.XMLBorderSide{},
+		Top:    model.XMLBorderSide{},
+		Bottom: model.XMLBorderSide{},
+	}}
 	xfs := []model.XMLXf{}
 
 	for i, style := range sc.styles {
@@ -771,6 +778,12 @@ func writeStylesWithCollector(zw *zip.Writer, sc *styleCollector) error {
 			if style.FontColor != "" {
 				font.Color = &model.XMLFontColor{RGB: "FF" + style.FontColor}
 			}
+			// Add family/charset hints for better compatibility (e.g., LibreOffice)
+			fam := classifyFontFamily(fontName)
+			if fam > 0 {
+				font.Family = &model.XMLFontFamily{Val: fam}
+			}
+			font.Charset = &model.XMLFontCharset{Val: 0}
 		}
 
 		fonts = append(fonts, font)
@@ -789,11 +802,37 @@ func writeStylesWithCollector(zw *zip.Writer, sc *styleCollector) error {
 			fillID = len(fills) - 1
 		}
 
+		// Border
+		borderID := 0
+		if style != nil && style.Border != nil {
+			mkSide := func(on bool) model.XMLBorderSide {
+				if !on || style.Border.Style == "" {
+					return model.XMLBorderSide{}
+				}
+				var color *model.XMLBorderColor
+				if style.Border.Color != "" {
+					color = &model.XMLBorderColor{RGB: "FF" + style.Border.Color}
+				}
+				return model.XMLBorderSide{Style: style.Border.Style, Color: color}
+			}
+			b := model.XMLBorder{
+				Left:   mkSide(style.Border.Left),
+				Right:  mkSide(style.Border.Right),
+				Top:    mkSide(style.Border.Top),
+				Bottom: mkSide(style.Border.Bottom),
+			}
+			borders = append(borders, b)
+			borderID = len(borders) - 1
+		}
+
 		xf := model.XMLXf{
-			NumFmtID: 0,
-			FontID:   i,
-			FillID:   fillID,
-			BorderID: 0,
+			NumFmtID:    0,
+			FontID:      i,
+			FillID:      fillID,
+			BorderID:    borderID,
+			ApplyFont:   true,
+			ApplyFill:   fillID != 0,
+			ApplyBorder: borderID != 0,
 		}
 		xfs = append(xfs, xf)
 	}
@@ -809,19 +848,24 @@ func writeStylesWithCollector(zw *zip.Writer, sc *styleCollector) error {
 			Fill:  fills,
 		},
 		Borders: model.XMLBorders{
+			Count:  len(borders),
+			Border: borders,
+		},
+		CellStyleXfs: model.XMLCellStyleXfs{
 			Count: 1,
-			Border: []model.XMLBorder{
-				{
-					Left:   model.XMLBorderSide{},
-					Right:  model.XMLBorderSide{},
-					Top:    model.XMLBorderSide{},
-					Bottom: model.XMLBorderSide{},
-				},
+			Xf: []model.XMLXf{
+				{NumFmtID: 0, FontID: 0, FillID: 0, BorderID: 0}, // base Normal
 			},
 		},
 		CellXfs: model.XMLCellXfs{
 			Count: len(xfs),
 			Xf:    xfs,
+		},
+		CellStyles: model.XMLCellStyles{
+			Count: 1,
+			Cell: []model.XMLCellStyle{
+				{Name: "Normal", XfID: 0, BuiltinID: 0},
+			},
 		},
 	}
 
@@ -836,6 +880,25 @@ func writeStylesWithCollector(zw *zip.Writer, sc *styleCollector) error {
 	}
 	_, err = w.Write(data)
 	return err
+}
+
+// classifyFontFamily maps a font name to OOXML family code
+// 0: unknown, 1: Roman (serif), 2: Swiss (sans-serif), 3: Modern (monospace), 4: Script, 5: Decorative
+func classifyFontFamily(name string) int {
+	n := strings.ToLower(name)
+	// Sans-serif
+	if strings.Contains(n, "arial") || strings.Contains(n, "calibri") || strings.Contains(n, "helvetica") || strings.Contains(n, "hiragino") || strings.Contains(n, "noto sans") || strings.Contains(n, "source sans") || strings.Contains(n, "yu gothic") || strings.Contains(n, "meiryo") || strings.Contains(n, "ms pgothic") || strings.Contains(n, "ms gothic") || strings.Contains(n, "liberation sans") {
+		return 2
+	}
+	// Serif
+	if strings.Contains(n, "times") || strings.Contains(n, "georgia") || strings.Contains(n, "noto serif") {
+		return 1
+	}
+	// Monospace
+	if strings.Contains(n, "courier") || strings.Contains(n, "consolas") || strings.Contains(n, "menlo") || strings.Contains(n, "monaco") || strings.Contains(n, "source code") {
+		return 3
+	}
+	return 0
 }
 
 func parseA1Ref(ref string) (int, int, error) {
@@ -908,8 +971,16 @@ func (sc *styleCollector) GetStyleID(style *model.CellStyle) int {
 }
 
 func (sc *styleCollector) styleSignature(style *model.CellStyle) string {
-	return fmt.Sprintf("%v|%v|%v|%s|%d|%s|%s",
+	// Border signature components
+	var bSig string
+	if style.Border != nil {
+		bSig = fmt.Sprintf("|b:%s|c:%s|t:%t|r:%t|b:%t|l:%t",
+			style.Border.Style, style.Border.Color,
+			style.Border.Top, style.Border.Right, style.Border.Bottom, style.Border.Left)
+	}
+	return fmt.Sprintf("%v|%v|%v|%s|%d|%s|%s%s",
 		style.Bold, style.Italic, style.Underline,
 		style.FontName, style.FontSize,
-		style.FontColor, style.FillColor)
+		style.FontColor, style.FillColor,
+		bSig)
 }

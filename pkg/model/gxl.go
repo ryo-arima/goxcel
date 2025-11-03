@@ -72,10 +72,13 @@ type GridTag struct {
 	Rows    []GridRowTag
 	Ref     string // Optional: Starting cell reference (e.g., "A1", "B5")
 	// Optional style defaults applied to all cells in this Grid
-	FontName  string
-	FontSize  int
-	FontColor string // RGB hex without # (e.g., "FF0000")
-	FillColor string // RGB hex without # (e.g., "FFFF00")
+	FontName    string
+	FontSize    int
+	FontColor   string // RGB hex without # (e.g., "FF0000")
+	FillColor   string // RGB hex without # (e.g., "FFFF00")
+	BorderStyle string // Border line style (thin, medium, thick, dashed, dotted, double)
+	BorderColor string // RGB hex without #
+	BorderSides string // comma-separated: all, top, right, bottom, left
 }
 
 // GridRowTag represents a single row parsed from Grid content.

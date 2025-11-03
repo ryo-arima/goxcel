@@ -244,8 +244,24 @@ Defines a grid of cells using pipe-delimited rows.
 - `font_size` / `text_size`: Font size in points (integer)
 - `font_color` / `text_color`: Font color in RGB hex; `#` optional (e.g., `#FF0000` or `FF0000`)
 - `fill_color` / `color`: Background fill color in RGB hex; `#` optional
+ - `border` / `border_style`: Border style for the grid's cells. Supported: `thin`, `medium`, `thick`, `dashed`, `dotted`, `double`
+ - `border_color`: Border color in RGB hex; `#` optional
+ - `border_sides`: Comma-separated sides to apply (default `all`). Options: `all`, `top`, `right`, `bottom`, `left`
 
 These defaults apply to every cell produced by the Grid unless overridden by per-cell formatting (e.g., markdown `**bold**`).
+
+**Examples (borders):**
+```xml
+<Grid border="thin" border_color="#999999">
+| A | B |
+| 1 | 2 |
+</Grid>
+
+<Grid border="dashed" border_color="#FF0000" border_sides="top,bottom">
+| Header 1 | Header 2 |
+| Data 1   | Data 2   |
+</Grid>
+```
 
 **Example - Grid with ref:**
 ```xml

@@ -46,6 +46,19 @@ type CellStyle struct {
 	// Alignment (future)
 	HAlign string // "left", "center", "right"
 	VAlign string // "top", "middle", "bottom"
+
+	// Border (optional)
+	Border *CellBorder
+}
+
+// CellBorder represents per-cell border settings
+type CellBorder struct {
+	Style  string // thin, medium, thick, dashed, dotted, double
+	Color  string // RGB hex without #
+	Top    bool
+	Right  bool
+	Bottom bool
+	Left   bool
 }
 
 // ColumnWidth represents column width settings
@@ -350,12 +363,14 @@ type XMLSharedStrings struct {
 
 // XMLStyleSheet represents xl/styles.xml
 type XMLStyleSheet struct {
-	XMLName struct{}   `xml:"styleSheet"`
-	Xmlns   string     `xml:"xmlns,attr"`
-	Fonts   XMLFonts   `xml:"fonts"`
-	Fills   XMLFills   `xml:"fills"`
-	Borders XMLBorders `xml:"borders"`
-	CellXfs XMLCellXfs `xml:"cellXfs"`
+	XMLName      struct{}        `xml:"styleSheet"`
+	Xmlns        string          `xml:"xmlns,attr"`
+	Fonts        XMLFonts        `xml:"fonts"`
+	Fills        XMLFills        `xml:"fills"`
+	Borders      XMLBorders      `xml:"borders"`
+	CellStyleXfs XMLCellStyleXfs `xml:"cellStyleXfs"`
+	CellXfs      XMLCellXfs      `xml:"cellXfs"`
+	CellStyles   XMLCellStyles   `xml:"cellStyles"`
 }
 
 // XMLFonts contains font definitions
@@ -367,13 +382,15 @@ type XMLFonts struct {
 
 // XMLFont represents a font
 type XMLFont struct {
-	XMLName struct{}      `xml:"font"`
-	Sz      XMLFontSize   `xml:"sz"`
-	Name    XMLFontName   `xml:"name"`
-	Color   *XMLFontColor `xml:"color,omitempty"`
-	B       *XMLBold      `xml:"b,omitempty"`
-	I       *XMLItalic    `xml:"i,omitempty"`
-	U       *XMLUnderline `xml:"u,omitempty"`
+	XMLName struct{}        `xml:"font"`
+	Sz      XMLFontSize     `xml:"sz"`
+	Name    XMLFontName     `xml:"name"`
+	Family  *XMLFontFamily  `xml:"family,omitempty"`
+	Charset *XMLFontCharset `xml:"charset,omitempty"`
+	Color   *XMLFontColor   `xml:"color,omitempty"`
+	B       *XMLBold        `xml:"b,omitempty"`
+	I       *XMLItalic      `xml:"i,omitempty"`
+	U       *XMLUnderline   `xml:"u,omitempty"`
 }
 
 // XMLFontColor represents font color
@@ -381,6 +398,18 @@ type XMLFontColor struct {
 	XMLName struct{} `xml:"color"`
 	RGB     string   `xml:"rgb,attr,omitempty"`
 	Theme   int      `xml:"theme,attr,omitempty"`
+}
+
+// XMLFontFamily represents font family classification (0 unknown, 1 Roman, 2 Swiss, 3 Modern, 4 Script, 5 Decorative)
+type XMLFontFamily struct {
+	XMLName struct{} `xml:"family"`
+	Val     int      `xml:"val,attr"`
+}
+
+// XMLFontCharset represents font charset (0 default)
+type XMLFontCharset struct {
+	XMLName struct{} `xml:"charset"`
+	Val     int      `xml:"val,attr"`
 }
 
 // XMLBold represents bold font
@@ -461,6 +490,15 @@ type XMLBorder struct {
 
 // XMLBorderSide represents a border side
 type XMLBorderSide struct {
+	Style string          `xml:"style,attr,omitempty"`
+	Color *XMLBorderColor `xml:"color,omitempty"`
+}
+
+// XMLBorderColor represents border color
+type XMLBorderColor struct {
+	XMLName struct{} `xml:"color"`
+	RGB     string   `xml:"rgb,attr,omitempty"`
+	Indexed int      `xml:"indexed,attr,omitempty"`
 }
 
 // XMLCellXfs contains cell format definitions
@@ -472,9 +510,34 @@ type XMLCellXfs struct {
 
 // XMLXf represents a cell format
 type XMLXf struct {
-	XMLName  struct{} `xml:"xf"`
-	NumFmtID int      `xml:"numFmtId,attr"`
-	FontID   int      `xml:"fontId,attr"`
-	FillID   int      `xml:"fillId,attr"`
-	BorderID int      `xml:"borderId,attr"`
+	XMLName     struct{} `xml:"xf"`
+	NumFmtID    int      `xml:"numFmtId,attr"`
+	FontID      int      `xml:"fontId,attr"`
+	FillID      int      `xml:"fillId,attr"`
+	BorderID    int      `xml:"borderId,attr"`
+	ApplyFont   bool     `xml:"applyFont,attr,omitempty"`
+	ApplyFill   bool     `xml:"applyFill,attr,omitempty"`
+	ApplyBorder bool     `xml:"applyBorder,attr,omitempty"`
+}
+
+// XMLCellStyleXfs represents base (named) styles
+type XMLCellStyleXfs struct {
+	XMLName struct{} `xml:"cellStyleXfs"`
+	Count   int      `xml:"count,attr"`
+	Xf      []XMLXf  `xml:"xf"`
+}
+
+// XMLCellStyles represents the list of style names
+type XMLCellStyles struct {
+	XMLName struct{}       `xml:"cellStyles"`
+	Count   int            `xml:"count,attr"`
+	Cell    []XMLCellStyle `xml:"cellStyle"`
+}
+
+// XMLCellStyle represents a named cell style
+type XMLCellStyle struct {
+	XMLName   struct{} `xml:"cellStyle"`
+	Name      string   `xml:"name,attr"`
+	XfID      int      `xml:"xfId,attr"`
+	BuiltinID int      `xml:"builtinId,attr,omitempty"`
 }

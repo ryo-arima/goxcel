@@ -111,6 +111,17 @@ make build
 
 # Preview without generating file
 .bin/goxcel generate --template .etc/sample.gxl --data .etc/sample.json --dry-run
+
+# Format a GXL template (pretty-print)
+.bin/goxcel format .etc/sample.gxl                 # prints to stdout
+.bin/goxcel format -w .etc/sample.gxl              # in-place overwrite
+.bin/goxcel format -o .etc/sample.formatted.gxl .etc/sample.gxl
+
+# Formatting behavior:
+# - Removes double blank lines outside Grid content
+# - Inlines empty tags: <Tag ...> </Tag> becomes a single line
+# - Aligns pipe columns inside <Grid> so '|' line up
+# - Preserves non-whitespace text and XML comments
 ```
 
 ### Using as Library

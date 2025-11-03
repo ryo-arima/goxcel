@@ -1,308 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <Book>
   <!-- Sheet 1: Basic Features & Cell Types -->
-  <Sheet name="Basic Features">
+  <Sheet name="Basic Features" col_width="0.5cm" row_height="0.5cm">
     <!-- Title with merge -->
-    <Grid>
-    | ** GXL Template - Feature Showcase ** | | | |
-    | Generated: 2025-11-03 | | | |
+    <Grid font="Arial" font_size="14" text_color="#003366" fill_color="#E6F2FF" border="thin" border_color="#99AACC">
+      | ** GXL Template - Feature Showcase ** |  |  |  |
+      | Generated: 2025-11-03                 |  |  |  |
     </Grid>
-    <Merge range="A1:D1" />
-    
+    <Merge range="A1:D1"> </Merge>
     <!-- Empty row -->
     <Grid>
-    | | | | |
+      |  |  |  |  |
     </Grid>
-    
     <!-- Cell Type Demo -->
-    <Grid>
-    | ** Cell Type Examples ** | | | |
+    <Grid font="Calibri" font_size="12" text_color="#222222" border="thin" border_color="#CCCCCC">
+      | ** Cell Type Examples ** |  |  |  |
     </Grid>
-    <Merge range="A4:D4" />
-    
-    <Grid>
-    | Type | Auto-detected | Type Hint | Description |
-    | String | {{ company.name }} | {{ "Hello World" }} | Text values |
-    | Number | {{ company.employees }} | {{ company.revenue:number }} | Numeric |
-    | Float | {{ product.price }} | {{ product.discount:float }} | Decimals |
-    | Boolean | {{ product.inStock }} | {{ product.featured:bool }} | TRUE/FALSE |
-    | Date | {{ order.date }} | {{ order.deliveryDate:date }} | Dates |
-    | Formula | =SUM(B6:B10) | =AVERAGE(C6:C10) | Calculations |
+    <Merge range="A4:D4"> </Merge>
+    <Grid border="thin" border_color="#DDDDDD">
+      | Type    | Auto-detected           | Type Hint                     | Description  |
+      | String  | {{ company.name }}      | {{ "Hello World" }}           | Text values  |
+      | Number  | {{ company.employees }} | {{ company.revenue:number }}  | Numeric      |
+      | Float   | {{ product.price }}     | {{ product.discount:float }}  | Decimals     |
+      | Boolean | {{ product.inStock }}   | {{ product.featured:bool }}   | TRUE/FALSE   |
+      | Date    | {{ order.date }}        | {{ order.deliveryDate:date }} | Dates        |
+      | Formula | =SUM(B6:B10)            | =AVERAGE(C6:C10)              | Calculations |
     </Grid>
-    
     <!-- Empty row -->
     <Grid>
-    | | | | |
+      |  |  |  |  |
     </Grid>
-    
     <!-- Variable Interpolation -->
-    <Grid>
-    | ** Variable Interpolation ** | | | |
+    <Grid font="Arial" font_size="12" text_color="#333333" fill_color="#FFF8E1" border="dashed" border_color="#FFCC80" border_sides="top,bottom">
+      | ** Variable Interpolation ** |  |  |  |
     </Grid>
-    <Merge range="A13:D13" />
-    
+    <Merge range="A13:D13"> </Merge>
     <Grid>
-    | Simple | {{ company.name }} | | |
-    | Nested | {{ company.address.city }} | {{ company.address.country }} | |
-    | Literal String | {{ "Fixed Text" }} | | |
-    | Literal Number | {{ 123 }} | | |
-    | Mixed Content | Price: {{ product.price }} yen | Stock: {{ product.quantity }} units | |
+      | Simple         | {{ company.name }}             |                                     |  |
+      | Nested         | {{ company.address.city }}     | {{ company.address.country }}       |  |
+      | Literal String | {{ "Fixed Text" }}             |                                     |  |
+      | Literal Number | {{ 123 }}                      |                                     |  |
+      | Mixed Content  | Price: {{ product.price }} yen | Stock: {{ product.quantity }} units |  |
     </Grid>
   </Sheet>
-  
   <!-- Sheet 2: For Loops & Loop Variables -->
   <Sheet name="For Loops">
-    <Grid>
-    | ** For Loop Examples ** | | | |
+    <Grid font="Arial" font_size="12" fill_color="#F0F4C3" border="medium" border_color="#9CCC65" border_sides="bottom">
+      | ** For Loop Examples ** |  |  |  |
     </Grid>
-    <Merge range="A1:D1" />
-    
-    <Grid>
-    | | | | |
+    <Merge range="A1:D1"> </Merge>
+    <Grid border="thin" border_color="#BDBDBD">
+      |  |  |  |  |
     </Grid>
-    
     <!-- Simple loop -->
     <Grid>
-    | Product | Price | Quantity | Total |
+      | Product | Price | Quantity | Total |
     </Grid>
-    
     <For each="item in products">
-      <Grid>
-      | {{ item.name }} | {{ item.price:float }} | {{ item.quantity:int }} | =B{{ _startRow }}*C{{ _startRow }} |
+      <Grid border="thin" border_color="#E0E0E0">
+        | {{ item.name }} | {{ item.price:float }} | {{ item.quantity:int }} | =B{{ _startRow }}*C{{ _startRow }} |
       </Grid>
     </For>
-    
     <!-- Total row -->
-    <Grid>
-    | ** Grand Total ** | | | =SUM(D4:D{{ _endRow }}) |
+    <Grid border="thin" border_color="#BDBDBD">
+      | ** Grand Total ** |  |  | =SUM(D4:D{{ _endRow }}) |
     </Grid>
-    
     <!-- Empty row -->
-    <Grid>
-    | | | | |
+    <Grid border="thin" border_color="#CCCCCC">
+      |  |  |  |  |
     </Grid>
-    
     <!-- Loop variables demo -->
-    <Grid>
-    | ** Loop Variables ** | | | |
+    <Grid border="thin" border_color="#DDDDDD">
+      | ** Loop Variables ** |  |  |  |
     </Grid>
-    <Merge range="A{{ _startRow }}:D{{ _startRow }}" />
-    
-    <Grid>
-    | Index | Number | Item | Row Info |
+    <Merge range="A{{ _startRow }}:D{{ _startRow }}"> </Merge>
+    <Grid border="thin" border_color="#DDDDDD">
+      | Index | Number | Item | Row Info |
     </Grid>
-    
     <For each="item in products">
       <Grid>
-      | {{ _index }} | {{ _number }} | {{ item.name }} | Row {{ _startRow }} |
+        | {{ _index }} | {{ _number }} | {{ item.name }} | Row {{ _startRow }} |
       </Grid>
     </For>
   </Sheet>
-  
   <!-- Sheet 3: Grid Positioning -->
   <Sheet name="Grid Positioning">
-    <Grid>
-    | ** Grid Positioning Examples ** | | |
+    <Grid border="thin" border_color="#BDBDBD">
+      | ** Grid Positioning Examples ** |  |  |
     </Grid>
-    <Merge range="A1:C1" />
-    
+    <Merge range="A1:C1"> </Merge>
     <!-- Normal sequential grids -->
-    <Grid>
-    | Sequential 1 | Data | |
+    <Grid border="thin" border_color="#BDBDBD">
+      | Sequential 1 | Data |  |
     </Grid>
-    
-    <Grid>
-    | Sequential 2 | Data | |
+    <Grid border="thin" border_color="#BDBDBD">
+      | Sequential 2 | Data |  |
     </Grid>
-    
     <!-- Absolute positioned grid (doesn't affect cursor) -->
     <Grid ref="E1">
-    | Absolute at E1 | |
-    | Side content | |
-    | More side data | |
+      | Absolute at E1 |  |
+      | Side content   |  |
+      | More side data |  |
     </Grid>
-    
     <!-- Continues from row 4 (after sequential grids) -->
-    <Grid>
-    | Sequential 3 | Data | |
+    <Grid border="thin" border_color="#BDBDBD">
+      | Sequential 3 | Data |  |
     </Grid>
-    
     <!-- Another absolute position -->
     <Grid ref="E5">
-    | Absolute at E5 | |
+      | Absolute at E5 |  |
     </Grid>
-    
     <!-- Anchor tag for cursor positioning -->
-    <Anchor ref="A7" />
+    <Anchor ref="A7"> </Anchor>
     <Grid>
-    | After Anchor A7 | Data | |
+      | After Anchor A7 | Data |  |
     </Grid>
   </Sheet>
-  
   <!-- Sheet 4: Advanced Features -->
   <Sheet name="Advanced">
     <Grid>
-    | ** Advanced Features ** | | | |
+      | ** Advanced Features ** |  |  |  |
     </Grid>
-    <Merge range="A1:D1" />
-    
+    <Merge range="A1:D1"> </Merge>
     <Grid>
-    | | | | |
+      |  |  |  |  |
     </Grid>
-    
     <!-- Empty cells preservation -->
     <Grid>
-    | ** Empty Cell Test ** | | | |
+      | ** Empty Cell Test ** |  |  |  |
     </Grid>
-    <Merge range="A3:D3" />
-    
+    <Merge range="A3:D3"> </Merge>
     <Grid>
-    | Column A | Column B | Column C | Column D |
-    | | Data in B | | Data in D |
-    | Data in A | | Data in C | |
-    | | | | All empty before |
+      | Column A  | Column B  | Column C  | Column D         |
+      |           | Data in B |           | Data in D        |
+      | Data in A |           | Data in C |                  |
+      |           |           |           | All empty before |
     </Grid>
-    
     <Grid>
-    | | | | |
+      |  |  |  |  |
     </Grid>
-    
     <!-- Nested data access -->
     <Grid>
-    | ** Nested Data Access ** | | | |
+      | ** Nested Data Access ** |  |  |  |
     </Grid>
-    <Merge range="A10:D10" />
-    
+    <Merge range="A10:D10"> </Merge>
     <Grid>
-    | Company | {{ company.name }} | | |
-    | City | {{ company.address.city }} | | |
-    | Country | {{ company.address.country }} | | |
-    | Contact | {{ company.contact.email }} | {{ company.contact.phone }} | |
+      | Company | {{ company.name }}            |                             |  |
+      | City    | {{ company.address.city }}    |                             |  |
+      | Country | {{ company.address.country }} |                             |  |
+      | Contact | {{ company.contact.email }}   | {{ company.contact.phone }} |  |
     </Grid>
-    
     <Grid>
-    | | | | |
+      |  |  |  |  |
     </Grid>
-    
     <!-- Force string type (preserve leading zeros) -->
     <Grid>
-    | ** Force String Type ** | | | |
+      | ** Force String Type ** |  |  |  |
     </Grid>
-    <Merge range="A17:D17" />
-    
+    <Merge range="A17:D17"> </Merge>
     <Grid>
-    | Zip Code | {{ "00123":string }} | Preserves leading zeros | |
-    | ID Number | {{ "00456":string }} | Not converted to number | |
+      | Zip Code  | {{ "00123":string }} | Preserves leading zeros |  |
+      | ID Number | {{ "00456":string }} | Not converted to number |  |
     </Grid>
   </Sheet>
-  
   <!-- Sheet 5: Formulas & Calculations -->
   <Sheet name="Formulas">
     <Grid>
-    | ** Excel Formula Examples ** | | | |
+      | ** Excel Formula Examples ** |  |  |  |
     </Grid>
-    <Merge range="A1:D1" />
-    
+    <Merge range="A1:D1"> </Merge>
     <Grid>
-    | | | | |
+      |  |  |  |  |
     </Grid>
-    
     <!-- Sample data for formulas -->
     <Grid>
-    | Item | Value 1 | Value 2 | Value 3 |
-    | A | 100 | 200 | 300 |
-    | B | 150 | 250 | 350 |
-    | C | 200 | 300 | 400 |
+      | Item | Value 1 | Value 2 | Value 3 |
+      | A    | 100     | 200     | 300     |
+      | B    | 150     | 250     | 350     |
+      | C    | 200     | 300     | 400     |
     </Grid>
-    
     <Grid>
-    | | | | |
+      |  |  |  |  |
     </Grid>
-    
     <!-- Formula examples -->
     <Grid>
-    | Formula Type | Result | | |
-    | SUM | =SUM(B4:B6) | | |
-    | AVERAGE | =AVERAGE(B4:D6) | | |
-    | MAX | =MAX(B4:D6) | | |
-    | MIN | =MIN(B4:D6) | | |
-    | COUNT | =COUNT(B4:D6) | | |
-    | IF | =IF(B4>150,"High","Low") | | |
+      | Formula Type | Result                   |  |  |
+      | SUM          | =SUM(B4:B6)              |  |  |
+      | AVERAGE      | =AVERAGE(B4:D6)          |  |  |
+      | MAX          | =MAX(B4:D6)              |  |  |
+      | MIN          | =MIN(B4:D6)              |  |  |
+      | COUNT        | =COUNT(B4:D6)            |  |  |
+      | IF           | =IF(B4>150,"High","Low") |  |  |
     </Grid>
-    
     <Grid>
-    | | | | |
+      |  |  |  |  |
     </Grid>
-    
     <!-- Dynamic formulas with loop -->
     <Grid>
-    | Product | Price | Quantity | Subtotal | Tax (10%) | Total |
+      | Product | Price | Quantity | Subtotal | Tax (10%) | Total |
     </Grid>
-    
     <For each="item in products">
       <Grid>
-      | {{ item.name }} | {{ item.price:float }} | {{ item.quantity:int }} | =B{{ _startRow }}*C{{ _startRow }} | =D{{ _startRow }}*0.1 | =D{{ _startRow }}+E{{ _startRow }} |
+        | {{ item.name }} | {{ item.price:float }} | {{ item.quantity:int }} | =B{{ _startRow }}*C{{ _startRow }} | =D{{ _startRow }}*0.1 | =D{{ _startRow }}+E{{ _startRow }} |
       </Grid>
     </For>
-    
     <Grid>
-    | ** TOTAL ** | | | =SUM(D{{ _startRow }}:D{{ _endRow }}) | =SUM(E{{ _startRow }}:E{{ _endRow }}) | =SUM(F{{ _startRow }}:F{{ _endRow }}) |
+      | ** TOTAL ** |  |  | =SUM(D{{ _startRow }}:D{{ _endRow }}) | =SUM(E{{ _startRow }}:E{{ _endRow }}) | =SUM(F{{ _startRow }}:F{{ _endRow }}) |
     </Grid>
   </Sheet>
-  
   <!-- Sheet 6: Real-world Invoice Example -->
   <Sheet name="Invoice">
     <!-- Header -->
     <Grid>
-    | ** INVOICE ** | | | | |
+      | ** INVOICE ** |  |  |  |  |
     </Grid>
-    <Merge range="A1:E1" />
-    
+    <Merge range="A1:E1"> </Merge>
     <Grid>
-    | | | | | |
+      |  |  |  |  |  |
     </Grid>
-    
     <!-- Invoice info -->
     <Grid>
-    | Invoice Number: | {{ invoice.number }} | | Date: | {{ invoice.date }} |
-    | Customer: | {{ customer.name }} | | Due Date: | {{ invoice.dueDate }} |
-    | | {{ customer.address }} | | | |
+      | Invoice Number: | {{ invoice.number }}   |  | Date:     | {{ invoice.date }}    |
+      | Customer:       | {{ customer.name }}    |  | Due Date: | {{ invoice.dueDate }} |
+      |                 | {{ customer.address }} |  |           |                       |
     </Grid>
-    
     <Grid>
-    | | | | | |
+      |  |  |  |  |  |
     </Grid>
-    
     <!-- Items header -->
     <Grid>
-    | # | Description | Qty | Unit Price | Amount |
+      | # | Description | Qty | Unit Price | Amount |
     </Grid>
-    
     <!-- Items loop -->
     <For each="item in invoice.items">
       <Grid>
-      | {{ _number }} | {{ item.description }} | {{ item.quantity:int }} | {{ item.unitPrice:float }} | =C{{ _startRow }}*D{{ _startRow }} |
+        | {{ _number }} | {{ item.description }} | {{ item.quantity:int }} | {{ item.unitPrice:float }} | =C{{ _startRow }}*D{{ _startRow }} |
       </Grid>
     </For>
-    
     <Grid>
-    | | | | | |
+      |  |  |  |  |  |
     </Grid>
-    
     <!-- Totals -->
     <Grid>
-    | | | | Subtotal: | =SUM(E9:E{{ _endRow }}) |
-    | | | | Tax ({{ invoice.taxRate:float }}%): | ={{ _startRow }}*{{ invoice.taxRate:float }}/100 |
-    | | | | ** Total: ** | ={{ _startRow }}+{{ _startRow }} |
+      |  |  |  | Subtotal:                           | =SUM(E9:E{{ _endRow }})                          |
+      |  |  |  | Tax ({{ invoice.taxRate:float }}%): | ={{ _startRow }}*{{ invoice.taxRate:float }}/100 |
+      |  |  |  | ** Total: **                        | ={{ _startRow }}+{{ _startRow }}                 |
     </Grid>
-    
     <Grid>
-    | | | | | |
+      |  |  |  |  |  |
     </Grid>
-    
     <!-- Footer -->
     <Grid>
-    | Thank you for your business! | | | | |
+      | Thank you for your business! |  |  |  |  |
     </Grid>
-    <Merge range="A{{ _startRow }}:E{{ _startRow }}" />
+    <Merge range="A{{ _startRow }}:E{{ _startRow }}"> </Merge>
   </Sheet>
 </Book>
