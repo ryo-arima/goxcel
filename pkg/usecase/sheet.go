@@ -49,6 +49,16 @@ func (u *DefaultSheetUsecase) RenderSheet(ctx context.Context, sheetTag *model.S
 
 	sheet := model.NewSheet(sheetTag.Name)
 
+	// Apply sheet-level defaults from tag config (if provided)
+	if sheetTag.Config != nil {
+		if sheetTag.Config.DefaultRowHeight > 0 {
+			sheet.Config.DefaultRowHeight = sheetTag.Config.DefaultRowHeight
+		}
+		if sheetTag.Config.DefaultColumnWidth > 0 {
+			sheet.Config.DefaultColumnWidth = sheetTag.Config.DefaultColumnWidth
+		}
+	}
+
 	// Initialize render state
 	state := &renderState{
 		sheet:     sheet,
@@ -74,6 +84,7 @@ type renderState struct {
 	anchorRow int // Current anchor row (1-based)
 	anchorCol int // Current anchor column (1-based)
 	rowOffset int // Offset from anchor for sequential content
+	gridStyle *model.CellStyle // Default style for current Grid
 }
 
 // renderNodes processes a list of nodes (tags) and renders them to the sheet
@@ -148,13 +159,19 @@ func (u *DefaultSheetUsecase) handleGridWithRef(state *renderState, ctxStack []m
 		state.anchorRow = row
 		state.anchorCol = col
 		state.rowOffset = 0
+		state.gridStyle = gridTagToStyle(tag)
 		return u.renderGridRows(state, ctxStack, tag.Rows)
 	})
 }
 
 // handleGridSequential renders a grid at the current position
 func (u *DefaultSheetUsecase) handleGridSequential(state *renderState, ctxStack []map[string]any, tag model.GridTag) error {
-	return u.renderGridRows(state, ctxStack, tag.Rows)
+	// Save/restore grid style around this grid
+	saved := state.gridStyle
+	state.gridStyle = gridTagToStyle(tag)
+	err := u.renderGridRows(state, ctxStack, tag.Rows)
+	state.gridStyle = saved
+	return err
 }
 
 // renderGridRows renders all rows in a grid
@@ -172,12 +189,14 @@ func (u *DefaultSheetUsecase) withSavedState(state *renderState, fn func() error
 	savedAnchorRow := state.anchorRow
 	savedAnchorCol := state.anchorCol
 	savedRowOffset := state.rowOffset
+	savedGridStyle := state.gridStyle
 
 	err := fn()
 
 	state.anchorRow = savedAnchorRow
 	state.anchorCol = savedAnchorCol
 	state.rowOffset = savedRowOffset
+	state.gridStyle = savedGridStyle
 
 	return err
 }
@@ -188,7 +207,7 @@ func (u *DefaultSheetUsecase) handleGridRow(state *renderState, ctxStack []map[s
 
 	for colIndex, cellValue := range row.Cells {
 		col := state.anchorCol + colIndex
-		cell := u.createCell(currentRow, col, cellValue, ctxStack)
+		cell := u.createCell(currentRow, col, cellValue, ctxStack, state.gridStyle)
 		state.sheet.AddCell(cell)
 	}
 
@@ -197,7 +216,7 @@ func (u *DefaultSheetUsecase) handleGridRow(state *renderState, ctxStack []map[s
 }
 
 // createCell creates a cell with proper type and style
-func (u *DefaultSheetUsecase) createCell(row, col int, cellValue string, ctxStack []map[string]any) *model.Cell {
+func (u *DefaultSheetUsecase) createCell(row, col int, cellValue string, ctxStack []map[string]any, baseStyle *model.CellStyle) *model.Cell {
 	ref := toA1Ref(row, col)
 
 	// Expand mustache templates and infer cell type
@@ -205,13 +224,89 @@ func (u *DefaultSheetUsecase) createCell(row, col int, cellValue string, ctxStac
 
 	// Parse markdown style formatting
 	cleanValue, style := u.cellUsecase.ParseMarkdownStyle(expandedValue)
+	// Merge grid-level base style
+	eff := mergeStyles(baseStyle, style)
 
 	return &model.Cell{
 		Ref:   ref,
 		Value: cleanValue,
 		Type:  cellType,
-		Style: style,
+		Style: eff,
 	}
+}
+
+// gridTagToStyle converts GridTag style hints into a CellStyle pointer (or nil if none)
+func gridTagToStyle(tag model.GridTag) *model.CellStyle {
+	has := false
+	st := &model.CellStyle{}
+	if tag.FontName != "" {
+		st.FontName = tag.FontName
+		has = true
+	}
+	if tag.FontSize > 0 {
+		st.FontSize = tag.FontSize
+		has = true
+	}
+	if tag.FontColor != "" {
+		st.FontColor = tag.FontColor
+		has = true
+	}
+	if tag.FillColor != "" {
+		st.FillColor = tag.FillColor
+		has = true
+	}
+	if !has {
+		return nil
+	}
+	return st
+}
+
+// mergeStyles overlays b over a (grid base a, cell-specific b). Returns nil if both are nil.
+func mergeStyles(a, b *model.CellStyle) *model.CellStyle {
+	if a == nil && b == nil {
+		return nil
+	}
+	if a == nil {
+		// Return a copy of b
+		c := *b
+		return &c
+	}
+	if b == nil {
+		c := *a
+		return &c
+	}
+	c := *a // start from base (grid)
+	// Overlay booleans: if true in b, set true
+	if b.Bold {
+		c.Bold = true
+	}
+	if b.Italic {
+		c.Italic = true
+	}
+	if b.Underline {
+		c.Underline = true
+	}
+	// Overlay font attributes if specified in b
+	if b.FontName != "" {
+		c.FontName = b.FontName
+	}
+	if b.FontSize > 0 {
+		c.FontSize = b.FontSize
+	}
+	if b.FontColor != "" {
+		c.FontColor = b.FontColor
+	}
+	if b.FillColor != "" {
+		c.FillColor = b.FillColor
+	}
+	// Alignment (future)
+	if b.HAlign != "" {
+		c.HAlign = b.HAlign
+	}
+	if b.VAlign != "" {
+		c.VAlign = b.VAlign
+	}
+	return &c
 }
 
 // handleMerge adds a cell merge to the sheet

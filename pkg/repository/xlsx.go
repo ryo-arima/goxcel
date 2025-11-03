@@ -506,6 +506,16 @@ func writeSheetWithStyles(zw *zip.Writer, sheet *model.Sheet, sheetNum int, styl
 		},
 	}
 
+	// Apply default row height and column width via sheetFormatPr
+	if sheet.Config != nil {
+		sfp := &model.XMLSheetFormatPr{DefaultRowHeight: sheet.Config.DefaultRowHeight}
+		if sheet.Config.DefaultColumnWidth > 0 {
+			sfp.DefaultColWidth = sheet.Config.DefaultColumnWidth
+		}
+		// Optionally set baseColWidth if desired; omit to let Excel infer
+		worksheet.SheetFormatPr = sfp
+	}
+
 	// Add column widths if configured
 	if sheet.Config != nil && len(sheet.Config.ColumnWidths) > 0 {
 		cols := &model.XMLCols{

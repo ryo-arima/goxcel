@@ -105,6 +105,20 @@ Defines a worksheet within the workbook.
   - Cannot be empty
   - Leading/trailing spaces are trimmed
 
+#### `col_width` (optional)
+- **Type**: Length
+- **Description**: Default column width for the entire sheet
+- **Units**: `ch` (characters, default if no unit), `cm`, `mm`, `in`, `pt`, `px`
+- **Examples**: `"8.43"`, `"1cm"`, `"72px"`
+
+#### `row_height` (optional)
+- **Type**: Length
+- **Description**: Default row height for the entire sheet
+- **Units**: `pt` (points, default if no unit), `cm`, `mm`, `in`, `px`
+- **Examples**: `"15"`, `"1cm"`, `"20px"`
+
+Note: For backward compatibility, `row_heigh` is accepted as an alias of `row_height`.
+
 ### Rules
 
 1. **Unique names**: No two sheets can have the same name
@@ -116,7 +130,7 @@ Defines a worksheet within the workbook.
 
 **Basic sheet:**
 ```xml
-<Sheet name="Sales Data">
+<Sheet name="Sales Data" col_width="1cm" row_height="1cm">
   <Grid>
   | Date | Amount |
   | 2024-01-01 | 1000 |
@@ -208,6 +222,14 @@ Defines a grid of cells using pipe-delimited rows.
 </Grid>
 ```
 
+**With style attributes (v1.x+):**
+```xml
+<Grid font="Arial" font_size="12" text_color="#333333" fill_color="#FFFFCC">
+| Header 1 | Header 2 |
+| Data 1   | Data 2   |
+</Grid>
+```
+
 ### Attributes
 
 #### `ref` (optional, v1.0+)
@@ -216,6 +238,14 @@ Defines a grid of cells using pipe-delimited rows.
 - **Default**: Current cursor position
 - **Examples**: `"A1"`, `"B5"`, `"D10"`
 - **Behavior**: When specified, the grid is placed at the absolute position without affecting the cursor position
+
+#### Style attributes (optional, v1.x+)
+- `font` / `font_name`: Font family for all cells in the grid (e.g., `Arial`)
+- `font_size` / `text_size`: Font size in points (integer)
+- `font_color` / `text_color`: Font color in RGB hex; `#` optional (e.g., `#FF0000` or `FF0000`)
+- `fill_color` / `color`: Background fill color in RGB hex; `#` optional
+
+These defaults apply to every cell produced by the Grid unless overridden by per-cell formatting (e.g., markdown `**bold**`).
 
 **Example - Grid with ref:**
 ```xml

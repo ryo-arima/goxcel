@@ -234,10 +234,19 @@ type XMLSheetRef struct {
 type XMLWorksheet struct {
 	XMLName    struct{}       `xml:"worksheet"`
 	Xmlns      string         `xml:"xmlns,attr"`
+	SheetFormatPr *XMLSheetFormatPr `xml:"sheetFormatPr,omitempty"`
 	SheetViews *XMLSheetViews `xml:"sheetViews,omitempty"`
 	Cols       *XMLCols       `xml:"cols,omitempty"`
 	SheetData  XMLSheetData   `xml:"sheetData"`
 	MergeCells *XMLMergeCells `xml:"mergeCells,omitempty"`
+}
+
+// XMLSheetFormatPr holds default row/column settings for the sheet
+type XMLSheetFormatPr struct {
+	XMLName          struct{} `xml:"sheetFormatPr"`
+	DefaultRowHeight float64  `xml:"defaultRowHeight,attr"`
+	DefaultColWidth  float64  `xml:"defaultColWidth,attr,omitempty"`
+	BaseColWidth     int      `xml:"baseColWidth,attr,omitempty"`
 }
 
 // XMLSheetViews contains sheet view settings

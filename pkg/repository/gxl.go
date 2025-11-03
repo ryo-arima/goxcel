@@ -117,6 +117,32 @@ func parseSheetTag(decoder *xml.Decoder, start xml.StartElement) (model.SheetTag
 		Name: getAttr(start, "name"),
 	}
 
+	// Parse optional default column width and row height from attributes
+	if cw := getAttr(start, "col_width"); cw != "" {
+		if w, _ := util.ParseColWidth(cw); w > 0 {
+			if sheet.Config == nil {
+				sheet.Config = &model.SheetConfigTag{}
+			}
+			sheet.Config.DefaultColumnWidth = w
+		}
+	}
+	// Support both row_height (canonical) and row_heigh (typo-compatible)
+	if rh := getAttr(start, "row_height"); rh != "" {
+		if h, _ := util.ParseRowHeight(rh); h > 0 {
+			if sheet.Config == nil {
+				sheet.Config = &model.SheetConfigTag{}
+			}
+			sheet.Config.DefaultRowHeight = h
+		}
+	} else if rh2 := getAttr(start, "row_heigh"); rh2 != "" {
+		if h, _ := util.ParseRowHeight(rh2); h > 0 {
+			if sheet.Config == nil {
+				sheet.Config = &model.SheetConfigTag{}
+			}
+			sheet.Config.DefaultRowHeight = h
+		}
+	}
+
 	for {
 		token, err := decoder.Token()
 		if err != nil {
@@ -259,9 +285,23 @@ func parseGridTag(decoder *xml.Decoder, start xml.StartElement) (model.GridTag, 
 
 	// Extract ref attribute if present
 	var ref string
+	var fontName string
+	var fontSize int
+	var fontColor string
+	var fillColor string
 	for _, attr := range start.Attr {
 		if attr.Name.Local == "ref" {
 			ref = attr.Value
+		} else if attr.Name.Local == "font" || attr.Name.Local == "font_name" || attr.Name.Local == "fontName" {
+			fontName = attr.Value
+		} else if attr.Name.Local == "font_size" || attr.Name.Local == "fontSize" || attr.Name.Local == "text_size" {
+			if v, err := strconv.Atoi(attr.Value); err == nil {
+				fontSize = v
+			}
+		} else if attr.Name.Local == "font_color" || attr.Name.Local == "fontColor" || attr.Name.Local == "text_color" {
+			fontColor = sanitizeColor(attr.Value)
+		} else if attr.Name.Local == "fill_color" || attr.Name.Local == "fillColor" || attr.Name.Local == "color" {
+			fillColor = sanitizeColor(attr.Value)
 		}
 	}
 
@@ -282,6 +322,10 @@ func parseGridTag(decoder *xml.Decoder, start xml.StartElement) (model.GridTag, 
 					Content: gridContent,
 					Rows:    rows,
 					Ref:     ref,
+					FontName:  fontName,
+					FontSize:  fontSize,
+					FontColor: fontColor,
+					FillColor: fillColor,
 				}, nil
 			}
 		}
@@ -425,4 +469,11 @@ func skipToEnd(decoder *xml.Decoder, elementName string) error {
 		}
 	}
 	return nil
+}
+
+// sanitizeColor removes leading '#' and uppercases hex
+func sanitizeColor(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.TrimPrefix(s, "#")
+	return strings.ToUpper(s)
 }

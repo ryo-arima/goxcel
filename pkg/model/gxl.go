@@ -25,6 +25,8 @@ type BookTag struct {
 type SheetTag struct {
 	Name  string
 	Nodes []any
+	// Optional sheet-level configuration parsed from attributes or child tags
+	Config *SheetConfigTag
 }
 
 // SheetConfigTag represents <SheetConfig> for sheet-level settings
@@ -69,6 +71,11 @@ type GridTag struct {
 	Content string
 	Rows    []GridRowTag
 	Ref     string // Optional: Starting cell reference (e.g., "A1", "B5")
+	// Optional style defaults applied to all cells in this Grid
+	FontName  string
+	FontSize  int
+	FontColor string // RGB hex without # (e.g., "FF0000")
+	FillColor string // RGB hex without # (e.g., "FFFF00")
 }
 
 // GridRowTag represents a single row parsed from Grid content.
