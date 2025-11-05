@@ -2,6 +2,7 @@ package parser_test
 
 import (
 	"archive/zip"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -518,5 +519,186 @@ func TestWriteBookToFile_EdgeCases(t *testing.T) {
 	}
 	if !foundStyles {
 		t.Error("styles.xml not found in ZIP")
+	}
+}
+
+// TestWriteBookToFile_ManySheets tests writing a book with many sheets to improve write* functions coverage
+func TestWriteBookToFile_ManySheets(t *testing.T) {
+	dir := t.TempDir()
+	b := model.NewBook()
+
+	// Create 10 sheets with various content
+	for i := 1; i <= 10; i++ {
+		s := model.NewSheet(fmt.Sprintf("Sheet%d", i))
+
+		// Add cells with different types
+		s.AddCell(&model.Cell{Ref: "A1", Value: fmt.Sprintf("%d", i*10), Type: model.CellTypeNumber})
+		s.AddCell(&model.Cell{Ref: "B1", Value: "true", Type: model.CellTypeBoolean})
+		s.AddCell(&model.Cell{Ref: "C1", Value: "Text", Type: model.CellTypeString})
+
+		// Add merge for some sheets
+		if i%2 == 0 {
+			s.AddMerge(model.Merge{Range: fmt.Sprintf("A%d:B%d", i, i)})
+		}
+
+		// Add column widths and row heights
+		s.Config.ColumnWidths = []model.ColumnWidth{
+			{Column: 1, Width: float64(10 + i)},
+		}
+		s.Config.RowHeights = []model.RowHeight{
+			{Row: 1, Height: float64(15 + i)},
+		}
+
+		b.AddSheet(s)
+	}
+
+	out := filepath.Join(dir, "many_sheets.xlsx")
+	if err := parser.WriteBookToFile(b, out); err != nil {
+		t.Fatalf("WriteBookToFile: %v", err)
+	}
+
+	// Verify all sheets are in the ZIP
+	zf, err := zip.OpenReader(out)
+	if err != nil {
+		t.Fatalf("open zip: %v", err)
+	}
+	defer zf.Close()
+
+	sheetCount := 0
+	for _, f := range zf.File {
+		if filepath.Dir(f.Name) == "xl/worksheets" && filepath.Ext(f.Name) == ".xml" {
+			sheetCount++
+		}
+	}
+
+	if sheetCount != 10 {
+		t.Errorf("expected 10 sheets in ZIP, got %d", sheetCount)
+	}
+
+	// Verify workbook relationships file exists
+	foundWorkbookRels := false
+	for _, f := range zf.File {
+		if f.Name == "xl/_rels/workbook.xml.rels" {
+			foundWorkbookRels = true
+			break
+		}
+	}
+	if !foundWorkbookRels {
+		t.Error("workbook.xml.rels not found")
+	}
+}
+
+// TestWriteBookToFile_ComplexStyles tests complex style scenarios
+func TestWriteBookToFile_ComplexStyles(t *testing.T) {
+	dir := t.TempDir()
+	b := model.NewBook()
+	s := model.NewSheet("Styles")
+
+	// Create cells with many different style combinations to exercise styleCollector
+	styles := []*model.CellStyle{
+		{Bold: true},
+		{Italic: true},
+		{Underline: true},
+		{Bold: true, Italic: true},
+		{Bold: true, Underline: true},
+		{Italic: true, Underline: true},
+		{Bold: true, Italic: true, Underline: true},
+		{FontName: "Arial", FontSize: 10},
+		{FontName: "Times New Roman", FontSize: 12},
+		{FontName: "Courier New", FontSize: 11},
+		{FontColor: "FF0000"},
+		{FontColor: "00FF00"},
+		{FontColor: "0000FF"},
+		{FillColor: "FFFF00"},
+		{FillColor: "00FFFF"},
+		{Border: &model.CellBorder{Style: "thin", Color: "000000", Top: true}},
+		{Border: &model.CellBorder{Style: "thin", Color: "000000", Bottom: true}},
+		{Border: &model.CellBorder{Style: "thin", Color: "000000", Left: true}},
+		{Border: &model.CellBorder{Style: "thin", Color: "000000", Right: true}},
+		{Border: &model.CellBorder{Style: "medium", Color: "FF0000", Top: true, Bottom: true, Left: true, Right: true}},
+	}
+
+	for i, style := range styles {
+		ref := fmt.Sprintf("A%d", i+1)
+		s.AddCell(&model.Cell{
+			Ref:   ref,
+			Value: fmt.Sprintf("Style%d", i+1),
+			Type:  model.CellTypeString,
+			Style: style,
+		})
+	}
+
+	// Add cells with all cell types
+	s.AddCell(&model.Cell{Ref: "B1", Value: "123.45", Type: model.CellTypeNumber})
+	s.AddCell(&model.Cell{Ref: "B2", Value: "TRUE", Type: model.CellTypeBoolean})
+	s.AddCell(&model.Cell{Ref: "B3", Value: "FALSE", Type: model.CellTypeBoolean})
+	s.AddCell(&model.Cell{Ref: "B4", Value: "=SUM(B1:B1)", Type: model.CellTypeFormula})
+	s.AddCell(&model.Cell{Ref: "B5", Value: "=A1+A2", Type: model.CellTypeFormula})
+	s.AddCell(&model.Cell{Ref: "B6", Value: "2025-01-01", Type: model.CellTypeDate})
+	s.AddCell(&model.Cell{Ref: "B7", Value: "2025-12-31", Type: model.CellTypeDate})
+
+	b.AddSheet(s)
+
+	out := filepath.Join(dir, "complex_styles.xlsx")
+	if err := parser.WriteBookToFile(b, out); err != nil {
+		t.Fatalf("WriteBookToFile: %v", err)
+	}
+
+	// Verify file exists and has content
+	fi, err := os.Stat(out)
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if fi.Size() == 0 {
+		t.Error("output file is empty")
+	}
+}
+
+// TestWriteBookToFile_SharedStrings tests shared strings generation
+func TestWriteBookToFile_SharedStrings(t *testing.T) {
+	dir := t.TempDir()
+	b := model.NewBook()
+	s := model.NewSheet("Strings")
+
+	// Add many string cells to trigger shared strings
+	for i := 1; i <= 50; i++ {
+		s.AddCell(&model.Cell{
+			Ref:   fmt.Sprintf("A%d", i),
+			Value: fmt.Sprintf("String %d", i),
+			Type:  model.CellTypeString,
+		})
+		// Add duplicate strings
+		if i%5 == 0 {
+			s.AddCell(&model.Cell{
+				Ref:   fmt.Sprintf("B%d", i),
+				Value: "Repeated String",
+				Type:  model.CellTypeString,
+			})
+		}
+	}
+
+	b.AddSheet(s)
+
+	out := filepath.Join(dir, "shared_strings.xlsx")
+	if err := parser.WriteBookToFile(b, out); err != nil {
+		t.Fatalf("WriteBookToFile: %v", err)
+	}
+
+	// Verify sharedStrings.xml exists
+	zf, err := zip.OpenReader(out)
+	if err != nil {
+		t.Fatalf("open zip: %v", err)
+	}
+	defer zf.Close()
+
+	foundSharedStrings := false
+	for _, f := range zf.File {
+		if f.Name == "xl/sharedStrings.xml" {
+			foundSharedStrings = true
+			break
+		}
+	}
+	if !foundSharedStrings {
+		t.Error("sharedStrings.xml not found")
 	}
 }

@@ -186,3 +186,71 @@ func TestSanitizeColor_GridAttributes(t *testing.T) {
 		t.Errorf("borderColor expected non-empty")
 	}
 }
+
+// TestReadGxl_ErrorCases tests error handling in GXL reading
+func TestReadGxl_ErrorCases(t *testing.T) {
+	lg := util.NewLogger(util.LoggerConfig{Component: "test", Service: "repo", Level: "DEBUG", Structured: false, Output: "stdout"})
+
+	// Non-existent file
+	_, err := parser.ReadGxlFromFile("nonexistent.gxl", lg)
+	if err == nil {
+		t.Error("expected error for non-existent file")
+	}
+
+	// Empty file path
+	_, err = parser.ReadGxlFromFile("", lg)
+	if err == nil {
+		t.Error("expected error for empty file path")
+	}
+}
+
+// TestFormatGxl_ComplexAttributes tests formatting with various node attributes
+func TestFormatGxl_ComplexAttributes(t *testing.T) {
+	// Use existing test data that has complex attributes
+	path := filepath.Join("..", ".testdata", "components.gxl")
+	lg := util.NewLogger(util.LoggerConfig{Component: "test", Service: "repo", Level: "DEBUG", Structured: false, Output: "stdout"})
+
+	gxl, err := parser.ReadGxlFromFile(path, lg)
+	if err != nil {
+		t.Fatalf("ReadGxlFromFile: %v", err)
+	}
+
+	if len(gxl.Sheets) == 0 {
+		t.Fatal("expected at least 1 sheet")
+	}
+
+	sheet := gxl.Sheets[0]
+
+	// Verify various node types are present
+	nodeTypes := make(map[string]bool)
+	for _, n := range sheet.Nodes {
+		switch n.(type) {
+		case model.GridTag:
+			nodeTypes["grid"] = true
+		case model.AnchorTag:
+			nodeTypes["anchor"] = true
+		case model.MergeTag:
+			nodeTypes["merge"] = true
+		case model.ForTag:
+			nodeTypes["for"] = true
+		case model.IfTag:
+			nodeTypes["if"] = true
+		case model.ImageTag:
+			nodeTypes["image"] = true
+		case model.ShapeTag:
+			nodeTypes["shape"] = true
+		case model.ChartTag:
+			nodeTypes["chart"] = true
+		case model.PivotTag:
+			nodeTypes["pivot"] = true
+		}
+	}
+
+	// components.gxl should have image, shape, chart, and pivot
+	expectedTypes := []string{"image", "shape", "chart", "pivot"}
+	for _, nodeType := range expectedTypes {
+		if !nodeTypes[nodeType] {
+			t.Errorf("expected %s node in components.gxl", nodeType)
+		}
+	}
+}
