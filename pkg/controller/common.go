@@ -54,13 +54,13 @@ func InitGenerateCmd() *cobra.Command {
 func runGenerate(templatePath, dataPath, outputPath string, dryRun bool) error {
 	// Create config with file path
 	conf := config.NewBaseConfigWithFile(templatePath)
-	conf.Logger.INFO(util.CI1, "Starting generate command", map[string]interface{}{"template": templatePath, "data": dataPath, "output": outputPath, "dry_run": dryRun})
+	conf.Logger.DEBUG(util.CI1, "Starting generate command", map[string]interface{}{"template": templatePath, "data": dataPath, "output": outputPath, "dry_run": dryRun})
 
 	// Read and parse template via repository
 	repo := gxlrepo.NewGxlRepository(conf)
 	gt, err := repo.ReadGxl()
 	if err != nil {
-		conf.Logger.ERROR(util.RP2, "Failed to read GXL template", map[string]interface{}{"template": templatePath, "error": err.Error()})
+		conf.Logger.ERROR(util.RP2, "Failed to read GXL template")
 		return fmt.Errorf("read gxl via repository: %w", err)
 	}
 	conf.Logger.DEBUG(util.GXLP1, "GXL template parsed successfully", map[string]interface{}{"sheets": len(gt.Sheets)})
@@ -71,7 +71,7 @@ func runGenerate(templatePath, dataPath, outputPath string, dryRun bool) error {
 		conf.Logger.DEBUG(util.FSR1, "Reading data file", map[string]interface{}{"file": dataPath})
 		db, err := os.ReadFile(dataPath)
 		if err != nil {
-			conf.Logger.ERROR(util.FSR2, "Failed to read data file", map[string]interface{}{"file": dataPath, "error": err.Error()})
+			conf.Logger.ERROR(util.FSR2, "Failed to read data file")
 			return fmt.Errorf("read data: %w", err)
 		}
 		var m map[string]any
@@ -81,13 +81,13 @@ func runGenerate(templatePath, dataPath, outputPath string, dryRun bool) error {
 		switch ext {
 		case ".yaml", ".yml":
 			if err := yaml.Unmarshal(db, &m); err != nil {
-				conf.Logger.ERROR(util.FSR2, "Failed to parse data YAML", map[string]interface{}{"file": dataPath, "error": err.Error()})
+				conf.Logger.ERROR(util.FSR2, "Failed to parse data YAML")
 				return fmt.Errorf("parse data yaml: %w", err)
 			}
 			conf.Logger.DEBUG(util.FSR1, "YAML data loaded successfully", nil)
 		case ".json":
 			if err := json.Unmarshal(db, &m); err != nil {
-				conf.Logger.ERROR(util.FSR2, "Failed to parse data JSON", map[string]interface{}{"file": dataPath, "error": err.Error()})
+				conf.Logger.ERROR(util.FSR2, "Failed to parse data JSON")
 				return fmt.Errorf("parse data json: %w", err)
 			}
 			conf.Logger.DEBUG(util.FSR1, "JSON data loaded successfully", nil)
@@ -95,7 +95,7 @@ func runGenerate(templatePath, dataPath, outputPath string, dryRun bool) error {
 			// Try JSON first, then YAML
 			if err := json.Unmarshal(db, &m); err != nil {
 				if err := yaml.Unmarshal(db, &m); err != nil {
-					conf.Logger.ERROR(util.FSR2, "Failed to parse data as JSON or YAML", map[string]interface{}{"file": dataPath, "error": err.Error()})
+					conf.Logger.ERROR(util.FSR2, "Failed to parse data as JSON or YAML")
 					return fmt.Errorf("parse data (tried JSON and YAML): %w", err)
 				}
 				conf.Logger.DEBUG(util.FSR1, "Data loaded successfully as YAML", nil)
@@ -107,30 +107,30 @@ func runGenerate(templatePath, dataPath, outputPath string, dryRun bool) error {
 	}
 
 	// Generate
-	conf.Logger.INFO(util.UR1, "Rendering template", nil)
+	conf.Logger.DEBUG(util.UR1, "Rendering template")
 	bookUsecase := usecase.NewBookUsecase(conf)
 	book, err := bookUsecase.Render(context.Background(), &gt, data)
 	if err != nil {
-		conf.Logger.ERROR(util.UR2, "Failed to render template", map[string]interface{}{"error": err.Error()})
+		conf.Logger.ERROR(util.UR2, "Failed to render template")
 		return fmt.Errorf("generate: %w", err)
 	}
 	conf.Logger.DEBUG(util.UR1, "Template rendered successfully", map[string]interface{}{"sheets": len(book.Sheets)})
 
 	// Dry run summary or write
 	if dryRun || strings.TrimSpace(outputPath) == "" {
-		conf.Logger.INFO(util.CC1, "Dry run mode - printing summary", nil)
+		conf.Logger.DEBUG(util.CC1, "Dry run mode - printing summary")
 		printBookSummary(book)
 		return nil
 	}
 
 	// Write XLSX file
-	conf.Logger.INFO(util.RW1, "Writing XLSX file", map[string]interface{}{"output": outputPath})
+	conf.Logger.DEBUG(util.RW1, "Writing XLSX file", map[string]interface{}{"output": outputPath})
 	if err := gxlrepo.WriteBookToFile(book, outputPath); err != nil {
-		conf.Logger.ERROR(util.RW2, "Failed to write XLSX file", map[string]interface{}{"output": outputPath, "error": err.Error()})
+		conf.Logger.ERROR(util.RW2, "Failed to write XLSX file")
 		return fmt.Errorf("write xlsx: %w", err)
 	}
 
-	conf.Logger.INFO(util.CC1, "Successfully generated XLSX file", map[string]interface{}{"output": outputPath})
+	conf.Logger.INFO(util.CC1, "Successfully generated XLSX file")
 	fmt.Printf("Successfully generated: %s\n", outputPath)
 	return nil
 }

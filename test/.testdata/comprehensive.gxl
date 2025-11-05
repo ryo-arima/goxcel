@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Book name="ComprehensiveTest">
+  <Sheet name="CellTypes">
+    <Grid ref="A1">
+      | Type | Value |
+      | String | {{stringVal}} |
+      | Int | {{intVal}} |
+      | Float | {{floatVal}} |
+      | Bool True | {{boolTrue}} |
+      | Bool False | {{boolFalse}} |
+      | Nil | {{nilVal}} |
+    </Grid>
+    <Grid ref="A10">
+      | Formula | Date |
+      | =SUM(A1:A5) | 2025-11-06 |
+    </Grid>
+    <Anchor ref="A15"/>
+    <Grid>
+      | Markdown |
+      | **bold** |
+      | _italic_ |
+      | **bold** and _italic_ |
+    </Grid>
+    <Merge range="A20:C20"/>
+    <For each="item in items">
+      <Grid ref="A{{loop.index + 21}}">
+        | {{item.name}} | {{item.value}} |
+      </Grid>
+    </For>
+  </Sheet>
+</Book>

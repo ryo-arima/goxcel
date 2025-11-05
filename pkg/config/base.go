@@ -4,8 +4,8 @@ import "github.com/ryo-arima/goxcel/pkg/util"
 
 // BaseConfig is a placeholder configuration root. Extend as needed.
 type BaseConfig struct {
-	FilePath string               // Path to the .gxl template file
-	Logger   util.LoggerInterface // Logger instance
+	FilePath string      // Path to the .gxl template file
+	Logger   util.Logger // Logger instance
 }
 
 // NewBaseConfig returns a default config instance.

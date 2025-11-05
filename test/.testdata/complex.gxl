@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Book name="Complex">
+  <Sheet name="All">
+    <Anchor ref="C3"/>
+    <Grid ref="D4" font="Calibri" font_size="12" font_color="#00ff00" fill_color="#0000ff" border="thin" border_color="#ff0000" border_sides="top,left">
+| A | B |
+| 1 | 2 |
+    </Grid>
+    <Merge range="E5:F5"/>
+    <For each="item in items">
+      <Grid>
+| {{item.name}} | {{item.qty:int}} |
+      </Grid>
+    </For>
+    <If cond=".show">
+      <Grid>
+| X | Y |
+      </Grid>
+      <Else>
+        <Grid>
+| N | O |
+        </Grid>
+      </Else>
+    </If>
+    <Image ref="A1" src="logo.png" width="100" height="50"/>
+    <Shape ref="B2" kind="rect" text="Hello" width="80" height="40" style="s1"/>
+    <Chart ref="C3" type="bar" dataRange="A1:B2" title="T" width="320" height="240"/>
+    <Pivot ref="D4" sourceRange="A1:B10" rows="R1,R2" columns="C1" values="V" filters="F" options="O"/>
+  </Sheet>
+</Book>

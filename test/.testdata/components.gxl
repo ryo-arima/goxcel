@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Book name="comp">
+  <Sheet name="S">
+    <Image ref="A1" src="logo.png" width="10" height="20"></Image>
+    <Shape ref="B2" kind="rect" text="Hi" style="s1" width="30" height="40"></Shape>
+    <Chart ref="C3" type="bar" dataRange="A1:B2" title="T" width="50" height="60"></Chart>
+    <Pivot ref="D4" sourceRange="A1:D10" rows="R" columns="C" values="V" filters="F" options="O"></Pivot>
+  </Sheet>
+</Book>

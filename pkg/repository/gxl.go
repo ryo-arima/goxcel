@@ -25,72 +25,73 @@ type GxlRepository interface {
 }
 
 type gxlRepository struct {
-	Conf config.BaseConfig
+	Conf   config.BaseConfig
+	logger util.Logger
 }
 
 // NewGxlRepository creates a repository from config.
 func NewGxlRepository(conf config.BaseConfig) GxlRepository {
-	return &gxlRepository{Conf: conf}
+	return &gxlRepository{Conf: conf, logger: conf.Logger}
 }
 
 // ReadGxl reads and parses the .gxl file from config.
-func (r *gxlRepository) ReadGxl() (model.GXL, error) {
-	if strings.TrimSpace(r.Conf.FilePath) == "" {
-		r.Conf.Logger.ERROR(util.RP2, "File path is not set in config", nil)
+func (rcv *gxlRepository) ReadGxl() (model.GXL, error) {
+	if strings.TrimSpace(rcv.Conf.FilePath) == "" {
+		rcv.logger.ERROR(util.RP2, "File path is not set in config")
 		return model.GXL{}, fmt.Errorf("file path is not set in config")
 	}
-	r.Conf.Logger.DEBUG(util.RP1, "Reading GXL file", map[string]interface{}{"file": r.Conf.FilePath})
-	gxl, err := ReadGxlFromFile(r.Conf.FilePath, r.Conf.Logger)
+	rcv.logger.DEBUG(util.RP1, "Reading GXL file", map[string]interface{}{"file": rcv.Conf.FilePath})
+	gxl, err := ReadGxlFromFile(rcv.Conf.FilePath, rcv.logger)
 	if err != nil {
-		r.Conf.Logger.ERROR(util.RP2, "Failed to read GXL file", map[string]interface{}{"file": r.Conf.FilePath, "error": err.Error()})
+		rcv.logger.ERROR(util.RP2, "Failed to read GXL file")
 		return model.GXL{}, err
 	}
-	r.Conf.Logger.INFO(util.RP1, "GXL file parsed successfully", map[string]interface{}{"file": r.Conf.FilePath, "sheets": len(gxl.Sheets)})
+	rcv.logger.INFO(util.RP1, "GXL file parsed successfully")
 	return gxl, nil
 }
 
 // FormatGxl pretty-prints the .gxl file specified in the repository config and returns the formatted bytes.
-func (r *gxlRepository) FormatGxl() ([]byte, error) {
-	if strings.TrimSpace(r.Conf.FilePath) == "" {
-		r.Conf.Logger.ERROR(util.RP2, "File path is not set in config", nil)
+func (rcv *gxlRepository) FormatGxl() ([]byte, error) {
+	if strings.TrimSpace(rcv.Conf.FilePath) == "" {
+		rcv.logger.ERROR(util.RP2, "File path is not set in config")
 		return nil, fmt.Errorf("file path is not set in config")
 	}
-	r.Conf.Logger.DEBUG(util.RP1, "Formatting GXL file", map[string]interface{}{"file": r.Conf.FilePath})
-	f, err := os.Open(r.Conf.FilePath)
+	rcv.logger.DEBUG(util.RP1, "Formatting GXL file", map[string]interface{}{"file": rcv.Conf.FilePath})
+	f, err := os.Open(rcv.Conf.FilePath)
 	if err != nil {
-		r.Conf.Logger.ERROR(util.FSR2, "Failed to open file for formatting", map[string]interface{}{"file": r.Conf.FilePath, "error": err.Error()})
+		rcv.logger.ERROR(util.FSR2, "Failed to open file for formatting")
 		return nil, fmt.Errorf("open file: %w", err)
 	}
 	defer f.Close()
 	out, err := prettyFormatGXL(f)
 	if err != nil {
-		r.Conf.Logger.ERROR(util.XMLU2, "Failed to format GXL XML", map[string]interface{}{"file": r.Conf.FilePath, "error": err.Error()})
+		rcv.logger.ERROR(util.XMLU2, "Failed to format GXL XML")
 		return nil, err
 	}
-	r.Conf.Logger.INFO(util.GXLP1, "GXL file formatted successfully", map[string]interface{}{"file": r.Conf.FilePath})
+	rcv.logger.INFO(util.GXLP1, "GXL file formatted successfully")
 	return out, nil
 }
 
 // ReadGxlFromFile reads and parses a .gxl file from the given path.
-func ReadGxlFromFile(filePath string, logger util.LoggerInterface) (model.GXL, error) {
+func ReadGxlFromFile(filePath string, logger util.Logger) (model.GXL, error) {
 	if strings.TrimSpace(filePath) == "" {
-		logger.ERROR(util.FSR2, "File path is empty", nil)
+		logger.ERROR(util.FSR2, "File path is empty")
 		return model.GXL{}, fmt.Errorf("file path is empty")
 	}
 	logger.DEBUG(util.FSO1, "Opening GXL file", map[string]interface{}{"file": filePath})
 	file, err := os.Open(filePath)
 	if err != nil {
-		logger.ERROR(util.FSR2, "Failed to open file", map[string]interface{}{"file": filePath, "error": err.Error()})
+		logger.ERROR(util.FSR2, "Failed to open file")
 		return model.GXL{}, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 	logger.DEBUG(util.XMLU1, "Parsing GXL XML content", nil)
 	gxl, err := parseGXL(file)
 	if err != nil {
-		logger.ERROR(util.XMLU2, "Failed to parse GXL XML", map[string]interface{}{"file": filePath, "error": err.Error()})
+		logger.ERROR(util.XMLU2, "Failed to parse GXL XML")
 		return model.GXL{}, err
 	}
-	logger.INFO(util.GXLP1, "GXL file parsed successfully", map[string]interface{}{"sheets": len(gxl.Sheets)})
+	logger.INFO(util.GXLP1, "GXL file parsed successfully")
 	return gxl, nil
 }
 

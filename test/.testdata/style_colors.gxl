@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GXL>
+  <Sheet name="Colors">
+    <Grid ref="A1" fontColor="#aabbcc" fill_color=" #00ff00 " border="thin" border_color="#112233" border_sides="top,left">
+      | X |
+    </Grid>
+  </Sheet>
+</GXL>

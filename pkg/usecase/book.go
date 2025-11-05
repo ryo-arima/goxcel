@@ -6,55 +6,27 @@ import (
 
 	"github.com/ryo-arima/goxcel/pkg/config"
 	"github.com/ryo-arima/goxcel/pkg/model"
+	"github.com/ryo-arima/goxcel/pkg/util"
 )
-
-// Renderer converts a GXL and input data into a model.Book workbook (backward compatibility)
-type Renderer interface {
-	Render(ctx context.Context, t *model.GXL, data any) (*model.Book, error)
-}
-
-// DefaultRenderer is a backward-compatible alias for DefaultBookUsecase
-type DefaultRenderer struct {
-	bookUsecase BookUsecase
-}
-
-// Render renders the template (backward compatibility)
-func (r DefaultRenderer) Render(ctx context.Context, t *model.GXL, data any) (*model.Book, error) {
-	if r.bookUsecase == nil {
-		r.bookUsecase = NewBookUsecase(config.NewBaseConfig())
-	}
-	return r.bookUsecase.Render(ctx, t, data)
-}
 
 // BookUsecase handles book-level rendering operations
 type BookUsecase interface {
 	Render(ctx context.Context, gxl *model.GXL, data any) (*model.Book, error)
 }
 
-// DefaultBookUsecase is the default implementation of BookUsecase
-type DefaultBookUsecase struct {
-	conf         config.BaseConfig
-	sheetUsecase SheetUsecase
+// bookUsecase is the default (unexported) implementation of BookUsecase
+type bookUsecase struct {
+	conf   config.BaseConfig
+	logger util.Logger
 }
 
 // NewBookUsecase creates a new BookUsecase with config
 func NewBookUsecase(conf config.BaseConfig) BookUsecase {
-	return &DefaultBookUsecase{
-		conf:         conf,
-		sheetUsecase: NewSheetUsecase(conf),
-	}
-}
-
-// NewDefaultBookUsecase creates a new DefaultBookUsecase (deprecated: use NewBookUsecase)
-func NewDefaultBookUsecase() *DefaultBookUsecase {
-	return &DefaultBookUsecase{
-		conf:         config.NewBaseConfig(),
-		sheetUsecase: NewSheetUsecase(config.NewBaseConfig()),
-	}
+	return &bookUsecase{conf: conf, logger: conf.Logger}
 }
 
 // Render renders the GXL template into a Book
-func (u *DefaultBookUsecase) Render(ctx context.Context, gxl *model.GXL, data any) (*model.Book, error) {
+func (rcv *bookUsecase) Render(ctx context.Context, gxl *model.GXL, data any) (*model.Book, error) {
 	if gxl == nil {
 		return nil, errors.New("book usecase: gxl template is nil")
 	}
@@ -62,11 +34,12 @@ func (u *DefaultBookUsecase) Render(ctx context.Context, gxl *model.GXL, data an
 	book := model.NewBook()
 
 	// Normalize data to map[string]any for consistent access
-	normalizedData := u.normalizeData(data)
+	normalizedData := rcv.normalizeData(data)
 
-	// Render each sheet
+	// Render each sheet using an internal renderer (no same-layer dependency)
 	for _, sheetTag := range gxl.Sheets {
-		sheet, err := u.sheetUsecase.RenderSheet(ctx, &sheetTag, normalizedData)
+		renderer := newSheetRenderer(rcv.conf)
+		sheet, err := renderer.RenderSheet(ctx, &sheetTag, normalizedData)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +50,7 @@ func (u *DefaultBookUsecase) Render(ctx context.Context, gxl *model.GXL, data an
 }
 
 // normalizeData converts any data type to map[string]any
-func (u *DefaultBookUsecase) normalizeData(data any) map[string]any {
+func (rcv *bookUsecase) normalizeData(data any) map[string]any {
 	if m, ok := data.(map[string]any); ok {
 		return m
 	}

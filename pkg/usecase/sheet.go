@@ -10,39 +10,24 @@ import (
 	"github.com/ryo-arima/goxcel/pkg/util"
 )
 
-// SheetUsecase handles sheet-level rendering operations
-type SheetUsecase interface {
-	RenderSheet(ctx context.Context, sheetTag *model.SheetTag, data map[string]any) (*model.Sheet, error)
+// sheetRenderer is an internal renderer for sheet-level operations
+type sheetRenderer struct {
+	conf   config.BaseConfig
+	logger util.Logger
+	cell   *cellHelper
 }
 
-// DefaultSheetUsecase is the default implementation of SheetUsecase
-type DefaultSheetUsecase struct {
-	conf        config.BaseConfig
-	logger      util.LoggerInterface
-	cellUsecase CellUsecase
-}
-
-// NewSheetUsecase creates a new SheetUsecase with config
-func NewSheetUsecase(conf config.BaseConfig) SheetUsecase {
-	return &DefaultSheetUsecase{
-		conf:        conf,
-		logger:      conf.Logger,
-		cellUsecase: NewCellUsecase(conf),
-	}
-}
-
-// NewDefaultSheetUsecase creates a new DefaultSheetUsecase (deprecated: use NewSheetUsecase)
-func NewDefaultSheetUsecase() *DefaultSheetUsecase {
-	conf := config.NewBaseConfig()
-	return &DefaultSheetUsecase{
-		conf:        conf,
-		logger:      conf.Logger,
-		cellUsecase: NewCellUsecase(conf),
+// newSheetRenderer creates a new internal sheet renderer
+func newSheetRenderer(conf config.BaseConfig) *sheetRenderer {
+	return &sheetRenderer{
+		conf:   conf,
+		logger: conf.Logger,
+		cell:   newCellHelper(conf),
 	}
 }
 
 // RenderSheet renders a SheetTag with data context into a Sheet
-func (u *DefaultSheetUsecase) RenderSheet(ctx context.Context, sheetTag *model.SheetTag, data map[string]any) (*model.Sheet, error) {
+func (rcv *sheetRenderer) RenderSheet(ctx context.Context, sheetTag *model.SheetTag, data map[string]any) (*model.Sheet, error) {
 	if sheetTag == nil {
 		return nil, fmt.Errorf("sheet tag is nil")
 	}
@@ -71,7 +56,7 @@ func (u *DefaultSheetUsecase) RenderSheet(ctx context.Context, sheetTag *model.S
 	ctxStack := []map[string]any{data}
 
 	// Render all nodes in the sheet
-	if err := u.renderNodes(state, ctxStack, sheetTag.Nodes); err != nil {
+	if err := rcv.renderNodes(state, ctxStack, sheetTag.Nodes); err != nil {
 		return nil, fmt.Errorf("render sheet %q: %w", sheetTag.Name, err)
 	}
 
@@ -87,9 +72,9 @@ type renderState struct {
 }
 
 // renderNodes processes a list of nodes (tags) and renders them to the sheet
-func (u *DefaultSheetUsecase) renderNodes(state *renderState, ctxStack []map[string]any, nodes []any) error {
+func (rcv *sheetRenderer) renderNodes(state *renderState, ctxStack []map[string]any, nodes []any) error {
 	for _, node := range nodes {
-		if err := u.renderNode(state, ctxStack, node); err != nil {
+		if err := rcv.renderNode(state, ctxStack, node); err != nil {
 			return err
 		}
 	}
@@ -97,26 +82,26 @@ func (u *DefaultSheetUsecase) renderNodes(state *renderState, ctxStack []map[str
 }
 
 // renderNode processes a single node and renders it to the sheet
-func (u *DefaultSheetUsecase) renderNode(state *renderState, ctxStack []map[string]any, node any) error {
+func (rcv *sheetRenderer) renderNode(state *renderState, ctxStack []map[string]any, node any) error {
 	switch v := node.(type) {
 	case model.AnchorTag:
-		return u.handleAnchor(state, v)
+		return rcv.handleAnchor(state, v)
 	case model.GridTag:
-		return u.handleGrid(state, ctxStack, v)
+		return rcv.handleGrid(state, ctxStack, v)
 	case model.GridRowTag:
-		return u.handleGridRow(state, ctxStack, v)
+		return rcv.handleGridRow(state, ctxStack, v)
 	case model.MergeTag:
-		return u.handleMerge(state, v)
+		return rcv.handleMerge(state, v)
 	case model.ForTag:
-		return u.handleFor(state, ctxStack, v)
+		return rcv.handleFor(state, ctxStack, v)
 	case model.ImageTag:
-		return u.handleImage(state, v)
+		return rcv.handleImage(state, v)
 	case model.ShapeTag:
-		return u.handleShape(state, v)
+		return rcv.handleShape(state, v)
 	case model.ChartTag:
-		return u.handleChart(state, v)
+		return rcv.handleChart(state, v)
 	case model.PivotTag:
-		return u.handlePivot(state, v)
+		return rcv.handlePivot(state, v)
 	default:
 		// Unknown node type, skip
 		return nil
@@ -124,8 +109,8 @@ func (u *DefaultSheetUsecase) renderNode(state *renderState, ctxStack []map[stri
 }
 
 // handleAnchor sets the anchor position
-func (u *DefaultSheetUsecase) handleAnchor(state *renderState, tag model.AnchorTag) error {
-	u.logger.DEBUG(util.USA1, fmt.Sprintf("Setting anchor position: %s", tag.Ref), nil)
+func (rcv *sheetRenderer) handleAnchor(state *renderState, tag model.AnchorTag) error {
+	rcv.logger.DEBUG(util.USA1, fmt.Sprintf("Setting anchor position: %s", tag.Ref), nil)
 
 	row, col, err := parseA1Ref(tag.Ref)
 	if err != nil {
@@ -138,47 +123,47 @@ func (u *DefaultSheetUsecase) handleAnchor(state *renderState, tag model.AnchorT
 }
 
 // handleGrid renders a grid (table) to the sheet
-func (u *DefaultSheetUsecase) handleGrid(state *renderState, ctxStack []map[string]any, tag model.GridTag) error {
-	u.logger.DEBUG(util.USG1, fmt.Sprintf("Rendering grid with %d rows", len(tag.Rows)), nil)
+func (rcv *sheetRenderer) handleGrid(state *renderState, ctxStack []map[string]any, tag model.GridTag) error {
+	rcv.logger.DEBUG(util.USG1, fmt.Sprintf("Rendering grid with %d rows", len(tag.Rows)), nil)
 	if tag.Ref != "" {
-		return u.handleGridWithRef(state, ctxStack, tag)
+		return rcv.handleGridWithRef(state, ctxStack, tag)
 	}
-	return u.handleGridSequential(state, ctxStack, tag)
+	return rcv.handleGridSequential(state, ctxStack, tag)
 }
 
 // handleGridWithRef renders a grid at an absolute position
-func (u *DefaultSheetUsecase) handleGridWithRef(state *renderState, ctxStack []map[string]any, tag model.GridTag) error {
+func (rcv *sheetRenderer) handleGridWithRef(state *renderState, ctxStack []map[string]any, tag model.GridTag) error {
 	row, col, err := parseA1Ref(tag.Ref)
 	if err != nil {
 		return fmt.Errorf("invalid grid ref %q: %w", tag.Ref, err)
 	}
 
 	// Save and restore state for absolute positioning
-	return u.withSavedState(state, func() error {
+	return rcv.withSavedState(state, func() error {
 		state.anchorRow = row
 		state.anchorCol = col
 		state.rowOffset = 0
 		base := gridTagToStyle(tag)
-		return u.renderGridRowsWithStyle(state, ctxStack, tag.Rows, base)
+		return rcv.renderGridRowsWithStyle(state, ctxStack, tag.Rows, base)
 	})
 }
 
 // handleGridSequential renders a grid at the current position
-func (u *DefaultSheetUsecase) handleGridSequential(state *renderState, ctxStack []map[string]any, tag model.GridTag) error {
+func (rcv *sheetRenderer) handleGridSequential(state *renderState, ctxStack []map[string]any, tag model.GridTag) error {
 	base := gridTagToStyle(tag)
-	return u.renderGridRowsWithStyle(state, ctxStack, tag.Rows, base)
+	return rcv.renderGridRowsWithStyle(state, ctxStack, tag.Rows, base)
 }
 
 // renderGridRows renders all rows in a grid
-func (u *DefaultSheetUsecase) renderGridRows(state *renderState, ctxStack []map[string]any, rows []model.GridRowTag) error {
+func (rcv *sheetRenderer) renderGridRows(state *renderState, ctxStack []map[string]any, rows []model.GridRowTag) error {
 	// legacy: no base style
-	return u.renderGridRowsWithStyle(state, ctxStack, rows, nil)
+	return rcv.renderGridRowsWithStyle(state, ctxStack, rows, nil)
 }
 
 // renderGridRowsWithStyle renders all rows with a provided base style
-func (u *DefaultSheetUsecase) renderGridRowsWithStyle(state *renderState, ctxStack []map[string]any, rows []model.GridRowTag, baseStyle *model.CellStyle) error {
+func (rcv *sheetRenderer) renderGridRowsWithStyle(state *renderState, ctxStack []map[string]any, rows []model.GridRowTag, baseStyle *model.CellStyle) error {
 	for _, row := range rows {
-		if err := u.handleGridRowWithStyle(state, ctxStack, row, baseStyle); err != nil {
+		if err := rcv.handleGridRowWithStyle(state, ctxStack, row, baseStyle); err != nil {
 			return err
 		}
 	}
@@ -186,7 +171,7 @@ func (u *DefaultSheetUsecase) renderGridRowsWithStyle(state *renderState, ctxSta
 }
 
 // withSavedState executes a function while preserving the render state
-func (u *DefaultSheetUsecase) withSavedState(state *renderState, fn func() error) error {
+func (rcv *sheetRenderer) withSavedState(state *renderState, fn func() error) error {
 	savedAnchorRow := state.anchorRow
 	savedAnchorCol := state.anchorCol
 	savedRowOffset := state.rowOffset
@@ -201,16 +186,16 @@ func (u *DefaultSheetUsecase) withSavedState(state *renderState, fn func() error
 }
 
 // handleGridRow renders a single row of cells
-func (u *DefaultSheetUsecase) handleGridRow(state *renderState, ctxStack []map[string]any, row model.GridRowTag) error {
-	return u.handleGridRowWithStyle(state, ctxStack, row, nil)
+func (rcv *sheetRenderer) handleGridRow(state *renderState, ctxStack []map[string]any, row model.GridRowTag) error {
+	return rcv.handleGridRowWithStyle(state, ctxStack, row, nil)
 }
 
-func (u *DefaultSheetUsecase) handleGridRowWithStyle(state *renderState, ctxStack []map[string]any, row model.GridRowTag, baseStyle *model.CellStyle) error {
+func (rcv *sheetRenderer) handleGridRowWithStyle(state *renderState, ctxStack []map[string]any, row model.GridRowTag, baseStyle *model.CellStyle) error {
 	currentRow := state.anchorRow + state.rowOffset
 
 	for colIndex, cellValue := range row.Cells {
 		col := state.anchorCol + colIndex
-		cell := u.createCell(currentRow, col, cellValue, ctxStack, baseStyle)
+		cell := rcv.createCell(currentRow, col, cellValue, ctxStack, baseStyle)
 		state.sheet.AddCell(cell)
 	}
 
@@ -219,14 +204,14 @@ func (u *DefaultSheetUsecase) handleGridRowWithStyle(state *renderState, ctxStac
 }
 
 // createCell creates a cell with proper type and style
-func (u *DefaultSheetUsecase) createCell(row, col int, cellValue string, ctxStack []map[string]any, baseStyle *model.CellStyle) *model.Cell {
+func (rcv *sheetRenderer) createCell(row, col int, cellValue string, ctxStack []map[string]any, baseStyle *model.CellStyle) *model.Cell {
 	ref := toA1Ref(row, col)
 
 	// Expand mustache templates and infer cell type
-	expandedValue, cellType := u.cellUsecase.ExpandMustacheWithType(ctxStack, cellValue)
+	expandedValue, cellType := rcv.cell.ExpandMustacheWithType(ctxStack, cellValue)
 
 	// Parse markdown style formatting
-	cleanValue, style := u.cellUsecase.ParseMarkdownStyle(expandedValue)
+	cleanValue, style := rcv.cell.ParseMarkdownStyle(expandedValue)
 	// Merge grid-level base style
 	eff := mergeStyles(baseStyle, style)
 
@@ -344,26 +329,26 @@ func mergeStyles(a, b *model.CellStyle) *model.CellStyle {
 }
 
 // handleMerge adds a cell merge to the sheet
-func (u *DefaultSheetUsecase) handleMerge(state *renderState, tag model.MergeTag) error {
+func (rcv *sheetRenderer) handleMerge(state *renderState, tag model.MergeTag) error {
 	state.sheet.AddMerge(model.Merge{Range: tag.Range})
 	return nil
 }
 
 // handleFor processes a for loop and renders its body multiple times
-func (u *DefaultSheetUsecase) handleFor(state *renderState, ctxStack []map[string]any, tag model.ForTag) error {
-	u.logger.DEBUG(util.USF1, fmt.Sprintf("Processing for loop: %s", tag.Each), nil)
+func (rcv *sheetRenderer) handleFor(state *renderState, ctxStack []map[string]any, tag model.ForTag) error {
+	rcv.logger.DEBUG(util.USF1, fmt.Sprintf("Processing for loop: %s", tag.Each), nil)
 
-	varName, dataPath, err := u.parseForSyntax(tag.Each)
+	varName, dataPath, err := rcv.parseForSyntax(tag.Each)
 	if err != nil {
 		return err
 	}
 
-	items := u.cellUsecase.ResolvePath(ctxStack, dataPath)
-	return u.iterateAndRender(state, ctxStack, varName, items, tag.Body)
+	items := rcv.cell.ResolvePath(ctxStack, dataPath)
+	return rcv.iterateAndRender(state, ctxStack, varName, items, tag.Body)
 }
 
 // parseForSyntax parses "varName in dataPath" syntax
-func (u *DefaultSheetUsecase) parseForSyntax(each string) (varName, dataPath string, err error) {
+func (rcv *sheetRenderer) parseForSyntax(each string) (varName, dataPath string, err error) {
 	parts := strings.Fields(each)
 	if len(parts) != 3 || parts[1] != "in" {
 		return "", "", fmt.Errorf("invalid For syntax: %q (expected: 'varName in dataPath')", each)
@@ -372,12 +357,12 @@ func (u *DefaultSheetUsecase) parseForSyntax(each string) (varName, dataPath str
 }
 
 // iterateAndRender iterates over items and renders the body for each
-func (u *DefaultSheetUsecase) iterateAndRender(state *renderState, ctxStack []map[string]any, varName string, items any, body []any) error {
+func (rcv *sheetRenderer) iterateAndRender(state *renderState, ctxStack []map[string]any, varName string, items any, body []any) error {
 	switch arr := items.(type) {
 	case []any:
-		return u.renderLoop(state, ctxStack, varName, arr, body)
+		return rcv.renderLoop(state, ctxStack, varName, arr, body)
 	case []map[string]any:
-		return u.renderMapLoop(state, ctxStack, varName, arr, body)
+		return rcv.renderMapLoop(state, ctxStack, varName, arr, body)
 	default:
 		// Not an iterable type, skip
 		return nil
@@ -385,11 +370,11 @@ func (u *DefaultSheetUsecase) iterateAndRender(state *renderState, ctxStack []ma
 }
 
 // renderLoop renders loop body for []any array
-func (u *DefaultSheetUsecase) renderLoop(state *renderState, ctxStack []map[string]any, varName string, items []any, body []any) error {
+func (rcv *sheetRenderer) renderLoop(state *renderState, ctxStack []map[string]any, varName string, items []any, body []any) error {
 	for i, item := range items {
-		scope := u.createLoopScope(varName, item, i)
+		scope := rcv.createLoopScope(varName, item, i)
 		newStack := append(ctxStack, scope)
-		if err := u.renderNodes(state, newStack, body); err != nil {
+		if err := rcv.renderNodes(state, newStack, body); err != nil {
 			return err
 		}
 	}
@@ -397,11 +382,11 @@ func (u *DefaultSheetUsecase) renderLoop(state *renderState, ctxStack []map[stri
 }
 
 // renderMapLoop renders loop body for []map[string]any array
-func (u *DefaultSheetUsecase) renderMapLoop(state *renderState, ctxStack []map[string]any, varName string, items []map[string]any, body []any) error {
+func (rcv *sheetRenderer) renderMapLoop(state *renderState, ctxStack []map[string]any, varName string, items []map[string]any, body []any) error {
 	for i, item := range items {
-		scope := u.createLoopScope(varName, item, i)
+		scope := rcv.createLoopScope(varName, item, i)
 		newStack := append(ctxStack, scope)
-		if err := u.renderNodes(state, newStack, body); err != nil {
+		if err := rcv.renderNodes(state, newStack, body); err != nil {
 			return err
 		}
 	}
@@ -409,7 +394,7 @@ func (u *DefaultSheetUsecase) renderMapLoop(state *renderState, ctxStack []map[s
 }
 
 // createLoopScope creates a loop variable scope
-func (u *DefaultSheetUsecase) createLoopScope(varName string, item any, index int) map[string]any {
+func (rcv *sheetRenderer) createLoopScope(varName string, item any, index int) map[string]any {
 	return map[string]any{
 		varName: item,
 		"loop": map[string]any{
@@ -420,7 +405,7 @@ func (u *DefaultSheetUsecase) createLoopScope(varName string, item any, index in
 }
 
 // handleImage adds an image to the sheet
-func (u *DefaultSheetUsecase) handleImage(state *renderState, tag model.ImageTag) error {
+func (rcv *sheetRenderer) handleImage(state *renderState, tag model.ImageTag) error {
 	state.sheet.AddImage(model.Image{
 		Ref:      tag.Ref,
 		Source:   tag.Src,
@@ -431,7 +416,7 @@ func (u *DefaultSheetUsecase) handleImage(state *renderState, tag model.ImageTag
 }
 
 // handleShape adds a shape to the sheet
-func (u *DefaultSheetUsecase) handleShape(state *renderState, tag model.ShapeTag) error {
+func (rcv *sheetRenderer) handleShape(state *renderState, tag model.ShapeTag) error {
 	state.sheet.AddShape(model.Shape{
 		Ref:      tag.Ref,
 		Kind:     tag.Kind,
@@ -444,7 +429,7 @@ func (u *DefaultSheetUsecase) handleShape(state *renderState, tag model.ShapeTag
 }
 
 // handleChart adds a chart to the sheet
-func (u *DefaultSheetUsecase) handleChart(state *renderState, tag model.ChartTag) error {
+func (rcv *sheetRenderer) handleChart(state *renderState, tag model.ChartTag) error {
 	state.sheet.AddChart(model.Chart{
 		Ref:       tag.Ref,
 		Type:      tag.Type,
@@ -457,7 +442,7 @@ func (u *DefaultSheetUsecase) handleChart(state *renderState, tag model.ChartTag
 }
 
 // handlePivot adds a pivot table to the sheet
-func (u *DefaultSheetUsecase) handlePivot(state *renderState, tag model.PivotTag) error {
+func (rcv *sheetRenderer) handlePivot(state *renderState, tag model.PivotTag) error {
 	rows := parseCommaSeparated(tag.Rows)
 	cols := parseCommaSeparated(tag.Columns)
 	vals := parseCommaSeparated(tag.Values)

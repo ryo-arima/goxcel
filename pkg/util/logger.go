@@ -162,15 +162,15 @@ type LoggerConfig struct {
 	Output       string `json:"output" yaml:"output"`
 }
 
-// Logger represents the application logger
-type Logger struct {
+// LOGGER represents the application logger
+type LOGGER struct {
 	config *LoggerConfig
 	level  LogLevel
 	output io.Writer
 }
 
-// LoggerInterface defines the logging interface
-type LoggerInterface interface {
+// Logger defines the logging interface
+type Logger interface {
 	DEBUG(mcode MCode, optionalMessage string, fields ...map[string]interface{})
 	INFO(mcode MCode, optionalMessage string, fields ...map[string]interface{})
 	WARN(mcode MCode, optionalMessage string, fields ...map[string]interface{})
@@ -179,8 +179,8 @@ type LoggerInterface interface {
 }
 
 // NewLogger creates a new logger instance
-func NewLogger(loggerConfig LoggerConfig) LoggerInterface {
-	logger := &Logger{
+func NewLogger(loggerConfig LoggerConfig) Logger {
+	logger := &LOGGER{
 		config: &loggerConfig,
 		output: os.Stdout,
 	}
@@ -221,8 +221,8 @@ func NewLogger(loggerConfig LoggerConfig) LoggerInterface {
 }
 
 // log writes a log entry using MCode
-func (l *Logger) log(level LogLevel, mcode MCode, optionalMessage string, fields map[string]interface{}) {
-	if level < l.level {
+func (rcv *LOGGER) log(level LogLevel, mcode MCode, optionalMessage string, fields map[string]interface{}) {
+	if level < rcv.level {
 		return
 	}
 
@@ -232,19 +232,19 @@ func (l *Logger) log(level LogLevel, mcode MCode, optionalMessage string, fields
 		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Level:     level.String(),
 		Code:      mcode.Code,
-		Component: l.config.Component,
-		Service:   l.config.Service,
+		Component: rcv.config.Component,
+		Service:   rcv.config.Service,
 		Message:   finalMessage,
 		Fields:    fields,
 	}
 
-	l.writeLogEntry(entry)
+	rcv.writeLogEntry(entry)
 }
 
 // writeLogEntry writes the actual log entry to output
-func (l *Logger) writeLogEntry(entry LogEntry) {
+func (rcv *LOGGER) writeLogEntry(entry LogEntry) {
 	// Add caller information if enabled
-	if l.config.EnableCaller {
+	if rcv.config.EnableCaller {
 		if pc, file, line, ok := runtime.Caller(4); ok {
 			entry.File = file
 			entry.Line = line
@@ -274,70 +274,74 @@ func (l *Logger) writeLogEntry(entry LogEntry) {
 		}
 	}
 
-	if l.config.Structured {
+	if rcv.config.Structured {
 		// JSON format
 		if jsonBytes, err := json.Marshal(entry); err == nil {
-			fmt.Fprintln(l.output, string(jsonBytes))
+			fmt.Fprintln(rcv.output, string(jsonBytes))
 		} else {
 			// Fallback to simple format
-			fmt.Fprintf(l.output, "[%s] %s [%s] %s/%s: %s\n",
+			fmt.Fprintf(rcv.output, "[%s] %s [%s] %s/%s: %s\n",
 				entry.Timestamp, entry.Level, entry.Code, entry.Component, entry.Service, entry.Message)
 		}
 	} else {
 		// Human-readable format
-		fmt.Fprintf(l.output, "[%s] %s [%s] %s/%s: %s",
+		fmt.Fprintf(rcv.output, "[%s] %s [%s] %s/%s: %s",
 			entry.Timestamp, entry.Level, entry.Code, entry.Component, entry.Service, entry.Message)
 		if len(entry.Fields) > 0 {
 			if fieldsJSON, err := json.Marshal(entry.Fields); err == nil {
-				fmt.Fprintf(l.output, " %s", string(fieldsJSON))
+				fmt.Fprintf(rcv.output, " %s", string(fieldsJSON))
 			}
 		}
-		fmt.Fprintln(l.output)
+		fmt.Fprintln(rcv.output)
 	}
 }
 
 // DEBUG logs a debug message using MCode
-func (l *Logger) DEBUG(mcode MCode, optionalMessage string, fields ...map[string]interface{}) {
+func (rcv *LOGGER) DEBUG(mcode MCode, optionalMessage string, fields ...map[string]interface{}) {
 	var f map[string]interface{}
 	if len(fields) > 0 {
 		f = fields[0]
 	}
-	l.log(DEBUG, mcode, optionalMessage, f)
+	rcv.log(DEBUG, mcode, optionalMessage, f)
 }
 
 // INFO logs an info message using MCode
-func (l *Logger) INFO(mcode MCode, optionalMessage string, fields ...map[string]interface{}) {
+func (rcv *LOGGER) INFO(mcode MCode, optionalMessage string, fields ...map[string]interface{}) {
 	var f map[string]interface{}
 	if len(fields) > 0 {
 		f = fields[0]
 	}
-	l.log(INFO, mcode, optionalMessage, f)
+	rcv.log(INFO, mcode, optionalMessage, f)
 }
 
 // WARN logs a warning message using MCode
-func (l *Logger) WARN(mcode MCode, optionalMessage string, fields ...map[string]interface{}) {
+func (rcv *LOGGER) WARN(mcode MCode, optionalMessage string, fields ...map[string]interface{}) {
 	var f map[string]interface{}
 	if len(fields) > 0 {
 		f = fields[0]
 	}
-	l.log(WARN, mcode, optionalMessage, f)
+	rcv.log(WARN, mcode, optionalMessage, f)
 }
 
 // ERROR logs an error message using MCode
-func (l *Logger) ERROR(mcode MCode, optionalMessage string, fields ...map[string]interface{}) {
+func (rcv *LOGGER) ERROR(mcode MCode, optionalMessage string, fields ...map[string]interface{}) {
 	var f map[string]interface{}
 	if len(fields) > 0 {
 		f = fields[0]
 	}
-	l.log(ERROR, mcode, optionalMessage, f)
+	rcv.log(ERROR, mcode, optionalMessage, f)
 }
 
 // FATAL logs a fatal message using MCode and exits
-func (l *Logger) FATAL(mcode MCode, optionalMessage string, fields ...map[string]interface{}) {
+func (rcv *LOGGER) FATAL(mcode MCode, optionalMessage string, fields ...map[string]interface{}) {
 	var f map[string]interface{}
 	if len(fields) > 0 {
 		f = fields[0]
 	}
-	l.log(FATAL, mcode, optionalMessage, f)
-	os.Exit(1)
+	rcv.log(FATAL, mcode, optionalMessage, f)
+	// Indirect exit to allow test override
+	exitFunc(1)
 }
+
+// exitFunc allows tests to override process exit behavior for FATAL.
+var exitFunc = os.Exit

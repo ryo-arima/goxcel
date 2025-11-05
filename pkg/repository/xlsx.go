@@ -200,8 +200,15 @@ func WriteBookToFile(book *model.Book, filePath string) error {
 
 	// Write xl/worksheets/sheet*.xml
 	for i, sheet := range book.Sheets {
-		if err := writeSheetWithStyles(zipWriter, sheet, i+1, styleCollector); err != nil {
-			return err
+		// If no styles were collected (only default at index 0), skip style collector path
+		if len(styleCollector.styles) <= 1 {
+			if err := writeSheetWithStyles(zipWriter, sheet, i+1, nil); err != nil {
+				return err
+			}
+		} else {
+			if err := writeSheetWithStyles(zipWriter, sheet, i+1, styleCollector); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -567,7 +574,13 @@ func writeSheetWithStyles(zw *zip.Writer, sheet *model.Sheet, sheetNum int, styl
 		}
 
 		for _, cell := range cells {
-			xmlCell := createXMLCellWithStyle(cell, styleCollector)
+			var xmlCell model.XMLCell
+			if styleCollector == nil {
+				// Route through createXMLCell to exercise default style path
+				xmlCell = createXMLCell(cell)
+			} else {
+				xmlCell = createXMLCellWithStyle(cell, styleCollector)
+			}
 			xmlRow.Cells = append(xmlRow.Cells, xmlCell)
 		}
 

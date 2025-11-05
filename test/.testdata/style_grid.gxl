@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Book name="style">
+  <Sheet name="S">
+    <Grid ref="A1" font_color="#00ff00" fill_color="#0000ff" border="THIN" border_color="#ff0000" border_sides="Top,Left">
+| A | B |
+| 1 | 2 |
+    </Grid>
+  </Sheet>
+</Book>

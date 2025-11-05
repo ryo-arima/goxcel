@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Book name="ctrl">
+  <Sheet name="S1">
+    <For each="item in items">
+      <Anchor ref="A1"></Anchor>
+    </For>
+    <If cond="ok">
+      <Merge range="A1:B1"></Merge>
+      <Grid ref="B2">
+| X | Y |
+| 1 | 2 |
+      </Grid>
+      <Else>
+        <Grid ref="C3">
+| F | G |
+        </Grid>
+      </Else>
+    </If>
+  </Sheet>
+</Book>

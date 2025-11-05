@@ -11,20 +11,10 @@ import (
 	"github.com/ryo-arima/goxcel/pkg/util"
 )
 
-// CellUsecase handles cell-level operations (value expansion, data resolution)
-type CellUsecase interface {
-	ExpandMustache(ctxStack []map[string]any, template string) string
-	ResolvePath(ctxStack []map[string]any, path string) any
-	InferCellType(value string) model.CellType
-	ParseTypeHint(template string) (string, model.CellType)
-	ExpandMustacheWithType(ctxStack []map[string]any, template string) (string, model.CellType)
-	ParseMarkdownStyle(text string) (string, *model.CellStyle)
-}
-
-// DefaultCellUsecase is the default implementation of CellUsecase
-type DefaultCellUsecase struct {
+// cellHelper is an internal helper for cell-level operations
+type cellHelper struct {
 	conf       config.BaseConfig
-	logger     util.LoggerInterface
+	logger     util.Logger
 	mustacheRe *regexp.Regexp
 	typeHintRe *regexp.Regexp
 	numberRe   *regexp.Regexp
@@ -33,24 +23,9 @@ type DefaultCellUsecase struct {
 	italicRe   *regexp.Regexp
 }
 
-// NewCellUsecase creates a new CellUsecase with config
-func NewCellUsecase(conf config.BaseConfig) CellUsecase {
-	return &DefaultCellUsecase{
-		conf:       conf,
-		logger:     conf.Logger,
-		mustacheRe: regexp.MustCompile(`\{\{\s*([^}]+?)\s*\}\}`),
-		typeHintRe: regexp.MustCompile(`:\s*(int|float|number|bool|boolean|date|string)\s*$`),
-		numberRe:   regexp.MustCompile(`^-?\d+\.?\d*$`),
-		dateRe:     regexp.MustCompile(`^\d{4}-\d{2}-\d{2}`),
-		boldRe:     regexp.MustCompile(`\*\*(.+?)\*\*`),
-		italicRe:   regexp.MustCompile(`_(.+?)_`),
-	}
-}
-
-// NewDefaultCellUsecase creates a new DefaultCellUsecase (deprecated: use NewCellUsecase)
-func NewDefaultCellUsecase() *DefaultCellUsecase {
-	conf := config.NewBaseConfig()
-	return &DefaultCellUsecase{
+// newCellHelper creates a new internal cell helper with config
+func newCellHelper(conf config.BaseConfig) *cellHelper {
+	return &cellHelper{
 		conf:       conf,
 		logger:     conf.Logger,
 		mustacheRe: regexp.MustCompile(`\{\{\s*([^}]+?)\s*\}\}`),
@@ -63,49 +38,49 @@ func NewDefaultCellUsecase() *DefaultCellUsecase {
 }
 
 // ExpandMustache replaces {{ varPath }} expressions with values from context stack
-func (u *DefaultCellUsecase) ExpandMustache(ctxStack []map[string]any, template string) string {
-	result, _ := u.ExpandMustacheWithType(ctxStack, template)
+func (rcv *cellHelper) ExpandMustache(ctxStack []map[string]any, template string) string {
+	result, _ := rcv.ExpandMustacheWithType(ctxStack, template)
 	return result
 }
 
 // ExpandMustacheWithType replaces {{ varPath }} expressions and returns the value with its type
-func (u *DefaultCellUsecase) ExpandMustacheWithType(ctxStack []map[string]any, template string) (string, model.CellType) {
-	u.logger.DEBUG(util.UCE1, fmt.Sprintf("Expanding mustache template: %s", template), nil)
+func (rcv *cellHelper) ExpandMustacheWithType(ctxStack []map[string]any, template string) (string, model.CellType) {
+	rcv.logger.DEBUG(util.UCE1, fmt.Sprintf("Expanding mustache template: %s", template), nil)
 
 	var detectedType model.CellType = model.CellTypeAuto
 	expansionCount := 0
 
-	result := u.mustacheRe.ReplaceAllStringFunc(template, func(match string) string {
+	result := rcv.mustacheRe.ReplaceAllStringFunc(template, func(match string) string {
 		expansionCount++
 
 		// Extract expression from {{ }}
-		expr := u.extractExpression(match)
+		expr := rcv.extractExpression(match)
 		if expr == "" {
 			return match
 		}
 
 		// Parse type hint if present
-		cleanPath, typeHint := u.ParseTypeHint(expr)
+		cleanPath, typeHint := rcv.ParseTypeHint(expr)
 		if typeHint != model.CellTypeAuto {
 			detectedType = typeHint
 		}
 
 		// Resolve value from context
-		value := u.ResolvePath(ctxStack, cleanPath)
+		value := rcv.ResolvePath(ctxStack, cleanPath)
 
 		// Convert to string
-		return u.valueToString(value)
+		return rcv.valueToString(value)
 	})
 
 	// Determine final cell type
-	finalType := u.determineFinalType(result, detectedType, expansionCount)
-	u.logger.DEBUG(util.UCE2, fmt.Sprintf("Expanded result: %s (type: %s)", result, finalType), nil)
+	finalType := rcv.determineFinalType(result, detectedType, expansionCount)
+	rcv.logger.DEBUG(util.UCE2, fmt.Sprintf("Expanded result: %s (type: %s)", result, finalType), nil)
 	return result, finalType
 }
 
 // extractExpression extracts the expression from {{ expr }}
-func (u *DefaultCellUsecase) extractExpression(match string) string {
-	submatch := u.mustacheRe.FindStringSubmatch(match)
+func (rcv *cellHelper) extractExpression(match string) string {
+	submatch := rcv.mustacheRe.FindStringSubmatch(match)
 	if len(submatch) < 2 {
 		return ""
 	}
@@ -113,7 +88,7 @@ func (u *DefaultCellUsecase) extractExpression(match string) string {
 }
 
 // determineFinalType determines the final cell type based on context
-func (u *DefaultCellUsecase) determineFinalType(result string, detectedType model.CellType, expansionCount int) model.CellType {
+func (rcv *cellHelper) determineFinalType(result string, detectedType model.CellType, expansionCount int) model.CellType {
 	// Multiple expansions → always string
 	if expansionCount > 1 {
 		return model.CellTypeString
@@ -125,19 +100,19 @@ func (u *DefaultCellUsecase) determineFinalType(result string, detectedType mode
 	}
 
 	// Otherwise → infer from result
-	return u.InferCellType(result)
+	return rcv.InferCellType(result)
 }
 
 // ParseTypeHint extracts type hint from a mustache expression
 // Input: ".value:int" -> Output: (".value", CellTypeNumber)
-func (u *DefaultCellUsecase) ParseTypeHint(expr string) (string, model.CellType) {
-	matches := u.typeHintRe.FindStringSubmatch(expr)
+func (rcv *cellHelper) ParseTypeHint(expr string) (string, model.CellType) {
+	matches := rcv.typeHintRe.FindStringSubmatch(expr)
 	if len(matches) == 0 {
 		return expr, model.CellTypeAuto
 	}
 
 	// Remove type hint from expression
-	cleanExpr := u.typeHintRe.ReplaceAllString(expr, "")
+	cleanExpr := rcv.typeHintRe.ReplaceAllString(expr, "")
 	cleanExpr = strings.TrimSpace(cleanExpr)
 
 	// Map type hint to CellType
@@ -157,26 +132,26 @@ func (u *DefaultCellUsecase) ParseTypeHint(expr string) (string, model.CellType)
 }
 
 // InferCellType infers the cell type from a string value
-func (u *DefaultCellUsecase) InferCellType(value string) model.CellType {
-	u.logger.DEBUG(util.UCT1, fmt.Sprintf("Inferring cell type for value: %s", value), nil)
+func (rcv *cellHelper) InferCellType(value string) model.CellType {
+	rcv.logger.DEBUG(util.UCT1, fmt.Sprintf("Inferring cell type for value: %s", value), nil)
 
 	if value == "" {
 		return model.CellTypeString
 	}
 
-	if u.isFormula(value) {
+	if rcv.isFormula(value) {
 		return model.CellTypeFormula
 	}
 
-	if u.isBoolean(value) {
+	if rcv.isBoolean(value) {
 		return model.CellTypeBoolean
 	}
 
-	if u.isNumber(value) {
+	if rcv.isNumber(value) {
 		return model.CellTypeNumber
 	}
 
-	if u.isDate(value) {
+	if rcv.isDate(value) {
 		return model.CellTypeDate
 	}
 
@@ -184,24 +159,24 @@ func (u *DefaultCellUsecase) InferCellType(value string) model.CellType {
 }
 
 // isFormula checks if value starts with =
-func (u *DefaultCellUsecase) isFormula(value string) bool {
+func (rcv *cellHelper) isFormula(value string) bool {
 	return strings.HasPrefix(value, "=")
 }
 
 // isBoolean checks if value is true or false
-func (u *DefaultCellUsecase) isBoolean(value string) bool {
+func (rcv *cellHelper) isBoolean(value string) bool {
 	lowerValue := strings.ToLower(strings.TrimSpace(value))
 	return lowerValue == "true" || lowerValue == "false"
 }
 
 // isNumber checks if value matches number pattern
-func (u *DefaultCellUsecase) isNumber(value string) bool {
-	return u.numberRe.MatchString(value)
+func (rcv *cellHelper) isNumber(value string) bool {
+	return rcv.numberRe.MatchString(value)
 }
 
 // isDate checks if value matches ISO date pattern and is parseable
-func (u *DefaultCellUsecase) isDate(value string) bool {
-	if !u.dateRe.MatchString(value) {
+func (rcv *cellHelper) isDate(value string) bool {
+	if !rcv.dateRe.MatchString(value) {
 		return false
 	}
 
@@ -213,27 +188,27 @@ func (u *DefaultCellUsecase) isDate(value string) bool {
 // ResolvePath resolves a dot-separated path from the context stack
 // Searches from the innermost (most recent) context to the outermost
 // Also handles string literals like "text" and numeric literals
-func (u *DefaultCellUsecase) ResolvePath(ctxStack []map[string]any, path string) any {
-	u.logger.DEBUG(util.UCR1, fmt.Sprintf("Resolving path: %s", path), nil)
+func (rcv *cellHelper) ResolvePath(ctxStack []map[string]any, path string) any {
+	rcv.logger.DEBUG(util.UCR1, fmt.Sprintf("Resolving path: %s", path), nil)
 
 	// Try to resolve as literal first
-	if literal := u.tryResolveLiteral(path); literal != nil {
+	if literal := rcv.tryResolveLiteral(path); literal != nil {
 		return literal
 	}
 
 	// Resolve from context stack
-	return u.resolveFromContext(ctxStack, path)
+	return rcv.resolveFromContext(ctxStack, path)
 }
 
 // tryResolveLiteral attempts to resolve the path as a literal value
-func (u *DefaultCellUsecase) tryResolveLiteral(path string) any {
+func (rcv *cellHelper) tryResolveLiteral(path string) any {
 	// String literal: "text" or 'text'
-	if u.isStringLiteral(path) {
+	if rcv.isStringLiteral(path) {
 		return path[1 : len(path)-1]
 	}
 
 	// Numeric literal
-	if u.numberRe.MatchString(path) {
+	if rcv.numberRe.MatchString(path) {
 		return path
 	}
 
@@ -247,20 +222,20 @@ func (u *DefaultCellUsecase) tryResolveLiteral(path string) any {
 }
 
 // isStringLiteral checks if path is a quoted string
-func (u *DefaultCellUsecase) isStringLiteral(path string) bool {
+func (rcv *cellHelper) isStringLiteral(path string) bool {
 	return (strings.HasPrefix(path, `"`) && strings.HasSuffix(path, `"`)) ||
 		(strings.HasPrefix(path, `'`) && strings.HasSuffix(path, `'`))
 }
 
 // resolveFromContext resolves a path from the context stack
-func (u *DefaultCellUsecase) resolveFromContext(ctxStack []map[string]any, path string) any {
+func (rcv *cellHelper) resolveFromContext(ctxStack []map[string]any, path string) any {
 	// Remove leading dot (e.g., ".quantity" -> "quantity")
 	cleanPath := strings.TrimPrefix(path, ".")
 	parts := strings.Split(cleanPath, ".")
 
 	// Search from innermost to outermost context
 	for i := len(ctxStack) - 1; i >= 0; i-- {
-		if value := u.resolveInContext(ctxStack[i], parts); value != nil {
+		if value := rcv.resolveInContext(ctxStack[i], parts); value != nil {
 			return value
 		}
 	}
@@ -269,7 +244,7 @@ func (u *DefaultCellUsecase) resolveFromContext(ctxStack []map[string]any, path 
 }
 
 // resolveInContext resolves a path within a single context map
-func (u *DefaultCellUsecase) resolveInContext(context map[string]any, parts []string) any {
+func (rcv *cellHelper) resolveInContext(context map[string]any, parts []string) any {
 	var current any = context
 
 	for _, part := range parts {
@@ -290,7 +265,7 @@ func (u *DefaultCellUsecase) resolveInContext(context map[string]any, parts []st
 }
 
 // valueToString converts a value to its string representation
-func (u *DefaultCellUsecase) valueToString(value any) string {
+func (rcv *cellHelper) valueToString(value any) string {
 	switch v := value.(type) {
 	case nil:
 		return ""
@@ -315,22 +290,22 @@ func (u *DefaultCellUsecase) valueToString(value any) string {
 
 // ParseMarkdownStyle parses markdown-style formatting and returns clean text with style
 // Supports: **bold**, _italic_
-func (u *DefaultCellUsecase) ParseMarkdownStyle(text string) (string, *model.CellStyle) {
-	u.logger.DEBUG(util.UCS1, fmt.Sprintf("Parsing markdown style: %s", text), nil)
+func (rcv *cellHelper) ParseMarkdownStyle(text string) (string, *model.CellStyle) {
+	rcv.logger.DEBUG(util.UCS1, fmt.Sprintf("Parsing markdown style: %s", text), nil)
 
 	style := &model.CellStyle{}
 	cleanText := text
 
 	// Check for bold: **text**
-	if u.boldRe.MatchString(text) {
+	if rcv.boldRe.MatchString(text) {
 		style.Bold = true
-		cleanText = u.boldRe.ReplaceAllString(cleanText, "$1")
+		cleanText = rcv.boldRe.ReplaceAllString(cleanText, "$1")
 	}
 
 	// Check for italic: _text_
-	if u.italicRe.MatchString(cleanText) {
+	if rcv.italicRe.MatchString(cleanText) {
 		style.Italic = true
-		cleanText = u.italicRe.ReplaceAllString(cleanText, "$1")
+		cleanText = rcv.italicRe.ReplaceAllString(cleanText, "$1")
 	}
 
 	// Return nil style if no formatting was found
