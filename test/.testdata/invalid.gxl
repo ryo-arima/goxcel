@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gxl>
+  <sheet name="Test">
+    <grid ref="A1"
+  <!-- Missing closing tags -->
+</gxl>

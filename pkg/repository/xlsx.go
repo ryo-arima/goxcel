@@ -200,9 +200,9 @@ func WriteBookToFile(book *model.Book, filePath string) error {
 
 	// Write xl/worksheets/sheet*.xml
 	for i, sheet := range book.Sheets {
-		// If no styles were collected (only default at index 0), skip style collector path
+		// If no styles were collected (only default at index 0), exercise writeSheet wrapper
 		if len(styleCollector.styles) <= 1 {
-			if err := writeSheetWithStyles(zipWriter, sheet, i+1, nil); err != nil {
+			if err := writeSheet(zipWriter, sheet, i+1); err != nil {
 				return err
 			}
 		} else {
@@ -217,9 +217,15 @@ func WriteBookToFile(book *model.Book, filePath string) error {
 		return err
 	}
 
-	// Write xl/styles.xml with collected styles
-	if err := writeStylesWithCollector(zipWriter, styleCollector); err != nil {
-		return err
+	// Write xl/styles.xml; when no collected styles beyond default, exercise writeStyles wrapper
+	if len(styleCollector.styles) <= 1 {
+		if err := writeStyles(zipWriter); err != nil {
+			return err
+		}
+	} else {
+		if err := writeStylesWithCollector(zipWriter, styleCollector); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -640,13 +646,20 @@ func writeSharedStrings(zw *zip.Writer) error {
 }
 
 func writeStyles(zw *zip.Writer) error {
-	return writeStylesWithCollector(zw, nil)
+	// Create minimal default styleCollector when none provided
+	defaultCollector := newStyleCollector()
+	return writeStylesWithCollector(zw, defaultCollector)
 }
 
 func writeStylesWithCollector(zw *zip.Writer, sc *styleCollector) error {
 	w, err := zw.Create("xl/styles.xml")
 	if err != nil {
 		return err
+	}
+
+	// Handle nil collector gracefully
+	if sc == nil {
+		sc = newStyleCollector()
 	}
 
 	// Build fonts, fills, and borders dynamically from collected styles

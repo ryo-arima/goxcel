@@ -269,3 +269,259 @@ func ReadTestGxl(path string, conf config.BaseConfig) (*model.GXL, error) {
 	}))
 	return &gxl, err
 }
+
+// TestBookUsecase_Render_GridWithoutRef tests renderGridRows (sequential grid without ref)
+func TestBookUsecase_Render_GridWithoutRef(t *testing.T) {
+	// Grid without ref attribute calls renderGridRows (sequential rendering)
+	gxl := &model.GXL{
+		BookTag: model.BookTag{Name: "Book"},
+		Sheets: []model.SheetTag{
+			{
+				Name: "Sequential",
+				Nodes: []any{
+					model.GridTag{
+						// No Ref attribute - should call renderGridRows
+						Rows: []model.GridRowTag{
+							{Cells: []string{"A", "B", "C"}},
+							{Cells: []string{"1", "2", "3"}},
+							{Cells: []string{"X", "Y", "Z"}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	conf := config.NewBaseConfig()
+	uc := usecase.NewBookUsecase(conf)
+	book, err := uc.Render(context.Background(), gxl, nil)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	// Verify cells were created sequentially starting from A1
+	expectedCells := map[string]string{
+		"A1": "A", "B1": "B", "C1": "C",
+		"A2": "1", "B2": "2", "C2": "3",
+		"A3": "X", "B3": "Y", "C3": "Z",
+	}
+
+	for ref, expectedValue := range expectedCells {
+		cell := findCellByRef(book, ref)
+		if cell == nil {
+			t.Errorf("cell %s not found", ref)
+			continue
+		}
+		if cell.Value != expectedValue {
+			t.Errorf("cell %s: got value %q, want %q", ref, cell.Value, expectedValue)
+		}
+	}
+}
+
+// TestBookUsecase_Render_ExpandMustacheWrapper tests ExpandMustache wrapper function
+func TestBookUsecase_Render_ExpandMustacheWrapper(t *testing.T) {
+	// Create a grid that uses mustache templates to indirectly call ExpandMustache
+	gxl := &model.GXL{
+		BookTag: model.BookTag{Name: "Book"},
+		Sheets: []model.SheetTag{
+			{
+				Name: "Mustache",
+				Nodes: []any{
+					model.GridTag{
+						Ref: "A1",
+						Rows: []model.GridRowTag{
+							// These templates will call ExpandMustache internally
+							{Cells: []string{"{{ name }}", "{{ age }}", "{{ active }}"}},
+							{Cells: []string{"{{ city }}", "{{ country }}", "{{ score }}"}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	data := map[string]any{
+		"name":    "Alice",
+		"age":     30,
+		"active":  true,
+		"city":    "Tokyo",
+		"country": "Japan",
+		"score":   95.5,
+	}
+
+	conf := config.NewBaseConfig()
+	uc := usecase.NewBookUsecase(conf)
+	book, err := uc.Render(context.Background(), gxl, data)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	// Verify mustache expansion worked
+	expectedCells := map[string]string{
+		"A1": "Alice",
+		"B1": "30",
+		"C1": "true",
+		"A2": "Tokyo",
+		"B2": "Japan",
+		"C2": "95.5",
+	}
+
+	for ref, expectedValue := range expectedCells {
+		cell := findCellByRef(book, ref)
+		if cell == nil {
+			t.Errorf("cell %s not found", ref)
+			continue
+		}
+		if cell.Value != expectedValue {
+			t.Errorf("cell %s: got value %q, want %q", ref, cell.Value, expectedValue)
+		}
+	}
+}
+
+// TestBookUsecase_Render_MultipleSequentialGrids tests multiple grids without refs
+func TestBookUsecase_Render_MultipleSequentialGrids(t *testing.T) {
+	gxl := &model.GXL{
+		BookTag: model.BookTag{Name: "Book"},
+		Sheets: []model.SheetTag{
+			{
+				Name: "MultiGrid",
+				Nodes: []any{
+					// First grid (sequential, no ref)
+					model.GridTag{
+						Rows: []model.GridRowTag{
+							{Cells: []string{"Grid1-A", "Grid1-B"}},
+						},
+					},
+					// Second grid (sequential, no ref)
+					model.GridTag{
+						Rows: []model.GridRowTag{
+							{Cells: []string{"Grid2-A", "Grid2-B"}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	conf := config.NewBaseConfig()
+	uc := usecase.NewBookUsecase(conf)
+	book, err := uc.Render(context.Background(), gxl, nil)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	// Both grids should render sequentially
+	if len(book.Sheets) != 1 {
+		t.Fatalf("expected 1 sheet, got %d", len(book.Sheets))
+	}
+
+	// Should have cells from both grids
+	if len(book.Sheets[0].Cells) < 4 {
+		t.Errorf("expected at least 4 cells, got %d", len(book.Sheets[0].Cells))
+	}
+}
+
+// TestBookUsecase_Render_MustacheInAttributes tests ExpandMustache in grid attributes
+func TestBookUsecase_Render_MustacheInAttributes(t *testing.T) {
+	gxl := &model.GXL{
+		BookTag: model.BookTag{Name: "Book"},
+		Sheets: []model.SheetTag{
+			{
+				Name: "DynamicStyles",
+				Nodes: []any{
+					model.GridTag{
+						Ref:       "A1",
+						FontName:  "{{ fontFamily }}",
+						FontColor: "{{ primaryColor }}",
+						FillColor: "{{ bgColor }}",
+						Rows: []model.GridRowTag{
+							{Cells: []string{"Dynamic Style"}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	data := map[string]any{
+		"fontFamily":   "Arial",
+		"primaryColor": "FF0000",
+		"bgColor":      "FFFF00",
+	}
+
+	conf := config.NewBaseConfig()
+	uc := usecase.NewBookUsecase(conf)
+	book, err := uc.Render(context.Background(), gxl, data)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	// Verify cell has expanded style attributes
+	cell := findCellByRef(book, "A1")
+	if cell == nil {
+		t.Fatal("cell A1 not found")
+	}
+
+	if cell.Style == nil {
+		t.Fatal("cell style is nil")
+	}
+
+	if cell.Style.FontName != "Arial" {
+		t.Errorf("FontName: got %q, want %q", cell.Style.FontName, "Arial")
+	}
+
+	if cell.Style.FontColor != "FF0000" {
+		t.Errorf("FontColor: got %q, want %q", cell.Style.FontColor, "FF0000")
+	}
+
+	if cell.Style.FillColor != "FFFF00" {
+		t.Errorf("FillColor: got %q, want %q", cell.Style.FillColor, "FFFF00")
+	}
+}
+
+// TestBookUsecase_Render_MustacheInAttributesNoData tests ExpandMustache with no data
+func TestBookUsecase_Render_MustacheInAttributesNoData(t *testing.T) {
+	gxl := &model.GXL{
+		BookTag: model.BookTag{Name: "Book"},
+		Sheets: []model.SheetTag{
+			{
+				Name: "StaticStyles",
+				Nodes: []any{
+					model.GridTag{
+						Ref:       "A1",
+						FontName:  "Courier New",
+						FontColor: "000000",
+						Rows: []model.GridRowTag{
+							{Cells: []string{"Static Style"}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	conf := config.NewBaseConfig()
+	uc := usecase.NewBookUsecase(conf)
+	book, err := uc.Render(context.Background(), gxl, nil)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	// Verify cell has static style attributes
+	cell := findCellByRef(book, "A1")
+	if cell == nil {
+		t.Fatal("cell A1 not found")
+	}
+
+	if cell.Style == nil {
+		t.Fatal("cell style is nil")
+	}
+
+	if cell.Style.FontName != "Courier New" {
+		t.Errorf("FontName: got %q, want %q", cell.Style.FontName, "Courier New")
+	}
+
+	if cell.Style.FontColor != "000000" {
+		t.Errorf("FontColor: got %q, want %q", cell.Style.FontColor, "000000")
+	}
+}

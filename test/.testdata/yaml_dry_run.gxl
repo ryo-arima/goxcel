@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gxl>
+  <sheet name="S1">
+    <grid ref="A1">
+      <row>
+        <cell>{{ok}}</cell>
+      </row>
+    </grid>
+  </sheet>
+</gxl>

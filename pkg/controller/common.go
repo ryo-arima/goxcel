@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,16 +30,17 @@ func InitGenerateCmd() *cobra.Command {
 		Use:   "generate",
 		Short: "Generate a .gxl template to .xlsx",
 		Long:  "Generate a .gxl template with optional JSON or YAML data into an Excel .xlsx file.",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if templatePath == "" && len(args) > 0 {
 				templatePath = args[0]
 			}
 			if strings.TrimSpace(templatePath) == "" {
-				log.Fatal("template path is required (pass as arg or --template)")
+				return fmt.Errorf("template path is required (pass as arg or --template)")
 			}
-			if err := runGenerate(templatePath, dataPath, outputPath, dryRun); err != nil {
-				log.Fatal(err)
+			if err := RunGenerate(templatePath, dataPath, outputPath, dryRun); err != nil {
+				return err
 			}
+			return nil
 		},
 	}
 
@@ -51,10 +51,17 @@ func InitGenerateCmd() *cobra.Command {
 	return cmd
 }
 
-func runGenerate(templatePath, dataPath, outputPath string, dryRun bool) error {
+// RunGenerate executes the generate command logic
+func RunGenerate(templatePath, dataPath, outputPath string, dryRun bool) error {
 	// Create config with file path
 	conf := config.NewBaseConfigWithFile(templatePath)
 	conf.Logger.DEBUG(util.CI1, "Starting generate command", map[string]interface{}{"template": templatePath, "data": dataPath, "output": outputPath, "dry_run": dryRun})
+
+	// Validate template file existence early for clearer error
+	if _, statErr := os.Stat(templatePath); statErr != nil {
+		conf.Logger.ERROR(util.FSR2, "Template file not found")
+		return fmt.Errorf("template not found: %w", statErr)
+	}
 
 	// Read and parse template via repository
 	repo := gxlrepo.NewGxlRepository(conf)
@@ -118,27 +125,45 @@ func runGenerate(templatePath, dataPath, outputPath string, dryRun bool) error {
 
 	// Dry run summary or write
 	if dryRun || strings.TrimSpace(outputPath) == "" {
-		conf.Logger.DEBUG(util.CC1, "Dry run mode - printing summary")
-		printBookSummary(book)
+		conf.Logger.INFO(util.CC1, "Dry run summary")
+		PrintBookSummary(book)
 		return nil
 	}
 
 	// Write XLSX file
 	conf.Logger.DEBUG(util.RW1, "Writing XLSX file", map[string]interface{}{"output": outputPath})
+	// Ensure output directory exists
+	outDir := filepath.Dir(outputPath)
+	if _, derr := os.Stat(outDir); os.IsNotExist(derr) {
+		if mkErr := os.MkdirAll(outDir, 0o755); mkErr != nil {
+			conf.Logger.ERROR(util.FSR2, "Failed to create output directory")
+			return fmt.Errorf("create output directory: %w", mkErr)
+		}
+		conf.Logger.DEBUG(util.FSM1, "Created output directory", map[string]interface{}{"dir": outDir})
+	}
+
 	if err := gxlrepo.WriteBookToFile(book, outputPath); err != nil {
 		conf.Logger.ERROR(util.RW2, "Failed to write XLSX file")
 		return fmt.Errorf("write xlsx: %w", err)
 	}
 
-	conf.Logger.INFO(util.CC1, "Successfully generated XLSX file")
-	fmt.Printf("Successfully generated: %s\n", outputPath)
+	conf.Logger.INFO(util.CC1, fmt.Sprintf("Successfully generated: %s", outputPath))
 	return nil
 }
 
-func printBookSummary(b *model.Book) {
-	fmt.Printf("Workbook: %d sheets\n", len(b.Sheets))
+// PrintBookSummary prints a summary of the book contents
+func PrintBookSummary(b *model.Book) {
+	logger := util.NewLogger(util.LoggerConfig{
+		Component:    "goxcel",
+		Service:      "summary",
+		Level:        "INFO",
+		Structured:   false,
+		EnableCaller: false,
+		Output:       "stdout",
+	})
+	logger.INFO(util.CC1, fmt.Sprintf("Workbook: %d sheets", len(b.Sheets)))
 	for _, s := range b.Sheets {
-		fmt.Printf("- Sheet %q: %d cells, %d merges, %d images, %d shapes, %d charts, %d pivots\n",
-			s.Name, len(s.Cells), len(s.Merges), len(s.Images), len(s.Shapes), len(s.Charts), len(s.Pivots))
+		logger.INFO(util.CC1, fmt.Sprintf("Sheet %q: %d cells, %d merges, %d images, %d shapes, %d charts, %d pivots",
+			s.Name, len(s.Cells), len(s.Merges), len(s.Images), len(s.Shapes), len(s.Charts), len(s.Pivots)))
 	}
 }

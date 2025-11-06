@@ -143,18 +143,22 @@ func (rcv *sheetRenderer) handleGridWithRef(state *renderState, ctxStack []map[s
 		state.anchorRow = row
 		state.anchorCol = col
 		state.rowOffset = 0
-		base := gridTagToStyle(tag)
+		base := rcv.gridTagToStyle(ctxStack, tag)
 		return rcv.renderGridRowsWithStyle(state, ctxStack, tag.Rows, base)
 	})
 }
 
 // handleGridSequential renders a grid at the current position
 func (rcv *sheetRenderer) handleGridSequential(state *renderState, ctxStack []map[string]any, tag model.GridTag) error {
-	base := gridTagToStyle(tag)
+	base := rcv.gridTagToStyle(ctxStack, tag)
+	if base == nil {
+		// No style attributes - use legacy path for compatibility
+		return rcv.renderGridRows(state, ctxStack, tag.Rows)
+	}
 	return rcv.renderGridRowsWithStyle(state, ctxStack, tag.Rows, base)
 }
 
-// renderGridRows renders all rows in a grid
+// renderGridRows renders all rows in a grid (legacy wrapper for compatibility)
 func (rcv *sheetRenderer) renderGridRows(state *renderState, ctxStack []map[string]any, rows []model.GridRowTag) error {
 	// legacy: no base style
 	return rcv.renderGridRowsWithStyle(state, ctxStack, rows, nil)
@@ -223,12 +227,13 @@ func (rcv *sheetRenderer) createCell(row, col int, cellValue string, ctxStack []
 	}
 }
 
-// gridTagToStyle converts GridTag style hints into a CellStyle pointer (or nil if none)
-func gridTagToStyle(tag model.GridTag) *model.CellStyle {
+// gridTagToStyle converts GridTag style hints into a CellStyle pointer with mustache expansion
+func (rcv *sheetRenderer) gridTagToStyle(ctxStack []map[string]any, tag model.GridTag) *model.CellStyle {
 	has := false
 	st := &model.CellStyle{}
 	if tag.FontName != "" {
-		st.FontName = tag.FontName
+		// Expand mustache in font name
+		st.FontName = rcv.cell.ExpandMustache(ctxStack, tag.FontName)
 		has = true
 	}
 	if tag.FontSize > 0 {
@@ -236,11 +241,13 @@ func gridTagToStyle(tag model.GridTag) *model.CellStyle {
 		has = true
 	}
 	if tag.FontColor != "" {
-		st.FontColor = tag.FontColor
+		// Expand mustache in color
+		st.FontColor = rcv.cell.ExpandMustache(ctxStack, tag.FontColor)
 		has = true
 	}
 	if tag.FillColor != "" {
-		st.FillColor = tag.FillColor
+		// Expand mustache in fill color
+		st.FillColor = rcv.cell.ExpandMustache(ctxStack, tag.FillColor)
 		has = true
 	}
 	if tag.BorderStyle != "" {

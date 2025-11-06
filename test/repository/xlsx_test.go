@@ -702,3 +702,350 @@ func TestWriteBookToFile_SharedStrings(t *testing.T) {
 		t.Error("sharedStrings.xml not found")
 	}
 }
+
+// TestWriteBookToFile_ComplexBorders tests complex border styles
+func TestWriteBookToFile_ComplexBorders(t *testing.T) {
+	dir := t.TempDir()
+	b := model.NewBook()
+	s := model.NewSheet("Borders")
+
+	// Test all border sides combinations
+	borderStyles := []*model.CellStyle{
+		// Single sides
+		{Border: &model.CellBorder{Style: "thin", Color: "000000", Top: true}},
+		{Border: &model.CellBorder{Style: "thin", Color: "000000", Bottom: true}},
+		{Border: &model.CellBorder{Style: "thin", Color: "000000", Left: true}},
+		{Border: &model.CellBorder{Style: "thin", Color: "000000", Right: true}},
+		// Multiple sides
+		{Border: &model.CellBorder{Style: "medium", Color: "FF0000", Top: true, Bottom: true}},
+		{Border: &model.CellBorder{Style: "thick", Color: "00FF00", Left: true, Right: true}},
+		// All sides with different styles
+		{Border: &model.CellBorder{Style: "double", Color: "0000FF", Top: true, Bottom: true, Left: true, Right: true}},
+		{Border: &model.CellBorder{Style: "dotted", Color: "FFFF00", Top: true, Bottom: true, Left: true, Right: true}},
+	}
+
+	for i, style := range borderStyles {
+		s.AddCell(&model.Cell{
+			Ref:   fmt.Sprintf("A%d", i+1),
+			Value: fmt.Sprintf("Border%d", i+1),
+			Type:  model.CellTypeString,
+			Style: style,
+		})
+	}
+
+	b.AddSheet(s)
+
+	out := filepath.Join(dir, "borders.xlsx")
+	if err := parser.WriteBookToFile(b, out); err != nil {
+		t.Fatalf("WriteBookToFile: %v", err)
+	}
+
+	// Verify file was created
+	if _, err := os.Stat(out); err != nil {
+		t.Fatalf("output file not created: %v", err)
+	}
+}
+
+// TestWriteBookToFile_StyleCombinations tests various style combinations
+func TestWriteBookToFile_StyleCombinations(t *testing.T) {
+	dir := t.TempDir()
+	b := model.NewBook()
+	s := model.NewSheet("StyleMix")
+
+	// Test combinations of bold, italic, underline
+	styles := []*model.CellStyle{
+		{Bold: true},
+		{Italic: true},
+		{Underline: true},
+		{Bold: true, Italic: true},
+		{Bold: true, Underline: true},
+		{Italic: true, Underline: true},
+		{Bold: true, Italic: true, Underline: true},
+		// With font properties
+		{Bold: true, FontName: "Arial", FontSize: 12},
+		{Italic: true, FontName: "Times New Roman", FontSize: 14},
+		{Underline: true, FontName: "Courier New", FontSize: 10},
+		// With colors
+		{Bold: true, FontColor: "FF0000"},
+		{Italic: true, FillColor: "FFFF00"},
+		{Underline: true, FontColor: "0000FF", FillColor: "00FFFF"},
+		// Complex combinations
+		{Bold: true, Italic: true, FontName: "Calibri", FontSize: 11, FontColor: "FF0000", FillColor: "FFFF00"},
+		{Bold: true, Underline: true, FontName: "Arial", FontSize: 13, FontColor: "00FF00", FillColor: "FF00FF"},
+		// With borders
+		{Bold: true, Border: &model.CellBorder{Style: "thin", Color: "000000", Top: true, Bottom: true}},
+		{Italic: true, Border: &model.CellBorder{Style: "medium", Color: "FF0000", Left: true, Right: true}},
+		// Everything combined
+		{
+			Bold:      true,
+			Italic:    true,
+			Underline: true,
+			FontName:  "Times New Roman",
+			FontSize:  16,
+			FontColor: "FF0000",
+			FillColor: "FFFF00",
+			Border:    &model.CellBorder{Style: "thick", Color: "0000FF", Top: true, Bottom: true, Left: true, Right: true},
+		},
+	}
+
+	for i, style := range styles {
+		s.AddCell(&model.Cell{
+			Ref:   fmt.Sprintf("A%d", i+1),
+			Value: fmt.Sprintf("Style%d", i+1),
+			Type:  model.CellTypeString,
+			Style: style,
+		})
+	}
+
+	// Add cells to test style reuse (same styles should get same IDs)
+	s.AddCell(&model.Cell{
+		Ref:   "B1",
+		Value: "Reuse1",
+		Type:  model.CellTypeString,
+		Style: &model.CellStyle{Bold: true}, // Same as first style
+	})
+	s.AddCell(&model.Cell{
+		Ref:   "B2",
+		Value: "Reuse2",
+		Type:  model.CellTypeString,
+		Style: &model.CellStyle{Bold: true, Italic: true}, // Same as fourth style
+	})
+
+	b.AddSheet(s)
+
+	out := filepath.Join(dir, "style_combinations.xlsx")
+	if err := parser.WriteBookToFile(b, out); err != nil {
+		t.Fatalf("WriteBookToFile: %v", err)
+	}
+
+	// Verify file size is reasonable (complex styles should not cause excessive size)
+	fi, err := os.Stat(out)
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if fi.Size() == 0 {
+		t.Error("output file is empty")
+	}
+	if fi.Size() > 1024*1024 { // Should not be larger than 1MB
+		t.Errorf("output file is too large: %d bytes", fi.Size())
+	}
+}
+
+// TestWriteBookToFile_NilStyleHandling tests that nil styles are handled correctly
+func TestWriteBookToFile_NilStyleHandling(t *testing.T) {
+	dir := t.TempDir()
+	b := model.NewBook()
+	s := model.NewSheet("NilStyles")
+
+	// Mix of nil and non-nil styles
+	s.AddCell(&model.Cell{Ref: "A1", Value: "No Style", Type: model.CellTypeString, Style: nil})
+	s.AddCell(&model.Cell{Ref: "A2", Value: "Bold", Type: model.CellTypeString, Style: &model.CellStyle{Bold: true}})
+	s.AddCell(&model.Cell{Ref: "A3", Value: "No Style Again", Type: model.CellTypeString, Style: nil})
+	s.AddCell(&model.Cell{Ref: "A4", Value: "Italic", Type: model.CellTypeString, Style: &model.CellStyle{Italic: true}})
+
+	b.AddSheet(s)
+
+	out := filepath.Join(dir, "nil_styles.xlsx")
+	if err := parser.WriteBookToFile(b, out); err != nil {
+		t.Fatalf("WriteBookToFile: %v", err)
+	}
+
+	// Verify file was created
+	if _, err := os.Stat(out); err != nil {
+		t.Fatalf("output file not created: %v", err)
+	}
+}
+
+// TestWriteBookToFile_FontFamilyClassification tests different font families
+func TestWriteBookToFile_FontFamilyClassification(t *testing.T) {
+	dir := t.TempDir()
+	b := model.NewBook()
+	s := model.NewSheet("Fonts")
+
+	// Test various font families to exercise classifyFontFamily
+	fonts := []string{
+		"Arial",                     // Swiss/Sans-serif
+		"Helvetica",                 // Swiss
+		"Calibri",                   // Swiss
+		"Times New Roman",           // Roman/Serif
+		"Georgia",                   // Roman
+		"Courier New",               // Modern/Monospace
+		"Consolas",                  // Monospace
+		"Courier",                   // Monospace
+		"Comic Sans MS",             // Script
+		"Brush Script MT",           // Script
+		"Impact",                    // Decorative
+		"Hiragino Sans",             // Japanese Sans
+		"Hiragino Mincho ProN",      // Japanese Serif
+		"Hiragino Kaku Gothic ProN", // Japanese Gothic
+		"MS Gothic",                 // Japanese Gothic
+		"MS Mincho",                 // Japanese Mincho
+		"Yu Gothic",                 // Japanese
+		"Meiryo",                    // Japanese
+		"Unknown Font",              // Default case
+	}
+
+	for i, font := range fonts {
+		s.AddCell(&model.Cell{
+			Ref:   fmt.Sprintf("A%d", i+1),
+			Value: font,
+			Type:  model.CellTypeString,
+			Style: &model.CellStyle{FontName: font, FontSize: 11},
+		})
+	}
+
+	b.AddSheet(s)
+
+	out := filepath.Join(dir, "fonts.xlsx")
+	if err := parser.WriteBookToFile(b, out); err != nil {
+		t.Fatalf("WriteBookToFile: %v", err)
+	}
+
+	// Verify file was created
+	if _, err := os.Stat(out); err != nil {
+		t.Fatalf("output file not created: %v", err)
+	}
+}
+
+// TestWriteBookToFile_NumberCellVariations tests number cell type conversion
+func TestWriteBookToFile_NumberCellVariations(t *testing.T) {
+	dir := t.TempDir()
+	b := model.NewBook()
+	s := model.NewSheet("Numbers")
+
+	// Various number formats to exercise createNumberCell
+	s.AddCell(&model.Cell{Ref: "A1", Value: "123", Type: model.CellTypeNumber})
+	s.AddCell(&model.Cell{Ref: "A2", Value: "456.789", Type: model.CellTypeNumber})
+	s.AddCell(&model.Cell{Ref: "A3", Value: "-999.5", Type: model.CellTypeNumber})
+	s.AddCell(&model.Cell{Ref: "A4", Value: "0", Type: model.CellTypeNumber})
+
+	b.AddSheet(s)
+
+	out := filepath.Join(dir, "numbers.xlsx")
+	if err := parser.WriteBookToFile(b, out); err != nil {
+		t.Fatalf("WriteBookToFile: %v", err)
+	}
+}
+
+// TestWriteBookToFile_BooleanCellVariations tests boolean cell type conversion
+func TestWriteBookToFile_BooleanCellVariations(t *testing.T) {
+	dir := t.TempDir()
+	b := model.NewBook()
+	s := model.NewSheet("Booleans")
+
+	// Various boolean formats to exercise createBooleanCell and convertToExcelBoolean
+	s.AddCell(&model.Cell{Ref: "A1", Value: "true", Type: model.CellTypeBoolean})
+	s.AddCell(&model.Cell{Ref: "A2", Value: "false", Type: model.CellTypeBoolean})
+	s.AddCell(&model.Cell{Ref: "A3", Value: "TRUE", Type: model.CellTypeBoolean})
+	s.AddCell(&model.Cell{Ref: "A4", Value: "FALSE", Type: model.CellTypeBoolean})
+	s.AddCell(&model.Cell{Ref: "A5", Value: "True", Type: model.CellTypeBoolean})
+	s.AddCell(&model.Cell{Ref: "A6", Value: "False", Type: model.CellTypeBoolean})
+
+	b.AddSheet(s)
+
+	out := filepath.Join(dir, "booleans.xlsx")
+	if err := parser.WriteBookToFile(b, out); err != nil {
+		t.Fatalf("WriteBookToFile: %v", err)
+	}
+}
+
+// TestWriteBookToFile_FormulaCellVariations tests formula cell type conversion
+func TestWriteBookToFile_FormulaCellVariations(t *testing.T) {
+	dir := t.TempDir()
+	b := model.NewBook()
+	s := model.NewSheet("Formulas")
+
+	// Various formula formats to exercise createFormulaCell and stripLeadingEquals
+	s.AddCell(&model.Cell{Ref: "A1", Value: "10", Type: model.CellTypeNumber})
+	s.AddCell(&model.Cell{Ref: "A2", Value: "20", Type: model.CellTypeNumber})
+	s.AddCell(&model.Cell{Ref: "B1", Value: "=SUM(A1:A2)", Type: model.CellTypeFormula})
+	s.AddCell(&model.Cell{Ref: "B2", Value: "=A1+A2", Type: model.CellTypeFormula})
+	s.AddCell(&model.Cell{Ref: "B3", Value: "=IF(A1>5,A1,A2)", Type: model.CellTypeFormula})
+	s.AddCell(&model.Cell{Ref: "B4", Value: "A1*A2", Type: model.CellTypeFormula}) // without leading =
+
+	b.AddSheet(s)
+
+	out := filepath.Join(dir, "formulas.xlsx")
+	if err := parser.WriteBookToFile(b, out); err != nil {
+		t.Fatalf("WriteBookToFile: %v", err)
+	}
+}
+
+// TestWriteBookToFile_DateCellVariations tests date cell type conversion
+func TestWriteBookToFile_DateCellVariations(t *testing.T) {
+	dir := t.TempDir()
+	b := model.NewBook()
+	s := model.NewSheet("Dates")
+
+	// Various date formats to exercise createDateCell
+	s.AddCell(&model.Cell{Ref: "A1", Value: "2025-11-07", Type: model.CellTypeDate})
+	s.AddCell(&model.Cell{Ref: "A2", Value: "2025-01-01T00:00:00Z", Type: model.CellTypeDate})
+	s.AddCell(&model.Cell{Ref: "A3", Value: "2025-12-31T23:59:59Z", Type: model.CellTypeDate})
+	s.AddCell(&model.Cell{Ref: "A4", Value: "2000-01-01", Type: model.CellTypeDate})
+
+	b.AddSheet(s)
+
+	out := filepath.Join(dir, "dates.xlsx")
+	if err := parser.WriteBookToFile(b, out); err != nil {
+		t.Fatalf("WriteBookToFile: %v", err)
+	}
+}
+
+// TestWriteBookToFile_StringAndAutoCells tests string and auto cell types
+func TestWriteBookToFile_StringAndAutoCells(t *testing.T) {
+	dir := t.TempDir()
+	b := model.NewBook()
+	s := model.NewSheet("StringsAuto")
+
+	// String cells to exercise createStringCell
+	s.AddCell(&model.Cell{Ref: "A1", Value: "plain text", Type: model.CellTypeString})
+	s.AddCell(&model.Cell{Ref: "A2", Value: "special chars: !@#$%", Type: model.CellTypeString})
+	s.AddCell(&model.Cell{Ref: "A3", Value: "", Type: model.CellTypeString})
+	s.AddCell(&model.Cell{Ref: "A4", Value: "こんにちは", Type: model.CellTypeString})
+
+	// Auto type cells
+	s.AddCell(&model.Cell{Ref: "B1", Value: "auto detect", Type: model.CellTypeAuto})
+	s.AddCell(&model.Cell{Ref: "B2", Value: "123", Type: model.CellTypeAuto})
+
+	b.AddSheet(s)
+
+	out := filepath.Join(dir, "strings_auto.xlsx")
+	if err := parser.WriteBookToFile(b, out); err != nil {
+		t.Fatalf("WriteBookToFile: %v", err)
+	}
+}
+
+// TestWriteBookToFile_CellTypeStyleCombinations tests cell types with various styles
+func TestWriteBookToFile_CellTypeStyleCombinations(t *testing.T) {
+	dir := t.TempDir()
+	b := model.NewBook()
+	s := model.NewSheet("TypeStyles")
+
+	// Test getCellStyleID branches with different cell types
+	s.AddCell(&model.Cell{Ref: "A1", Value: "No style", Type: model.CellTypeString, Style: nil})
+	s.AddCell(&model.Cell{Ref: "A2", Value: "Bold only", Type: model.CellTypeString, Style: &model.CellStyle{Bold: true}})
+	s.AddCell(&model.Cell{Ref: "A3", Value: "Italic only", Type: model.CellTypeString, Style: &model.CellStyle{Italic: true}})
+	s.AddCell(&model.Cell{Ref: "A4", Value: "Bold+Italic", Type: model.CellTypeString, Style: &model.CellStyle{Bold: true, Italic: true}})
+
+	// Test with numbers
+	s.AddCell(&model.Cell{Ref: "B1", Value: "100", Type: model.CellTypeNumber, Style: &model.CellStyle{Bold: true}})
+	s.AddCell(&model.Cell{Ref: "B2", Value: "200", Type: model.CellTypeNumber, Style: &model.CellStyle{Italic: true}})
+
+	// Test with booleans
+	s.AddCell(&model.Cell{Ref: "C1", Value: "true", Type: model.CellTypeBoolean, Style: &model.CellStyle{Bold: true, Italic: true}})
+	s.AddCell(&model.Cell{Ref: "C2", Value: "false", Type: model.CellTypeBoolean, Style: nil})
+
+	// Test with formulas
+	s.AddCell(&model.Cell{Ref: "D1", Value: "=SUM(B1:B2)", Type: model.CellTypeFormula, Style: &model.CellStyle{Bold: true}})
+	s.AddCell(&model.Cell{Ref: "D2", Value: "B1*B2", Type: model.CellTypeFormula, Style: nil}) // without leading =
+
+	// Test with dates
+	s.AddCell(&model.Cell{Ref: "E1", Value: "2025-11-07", Type: model.CellTypeDate, Style: &model.CellStyle{Italic: true}})
+
+	b.AddSheet(s)
+
+	out := filepath.Join(dir, "type_style_combos.xlsx")
+	if err := parser.WriteBookToFile(b, out); err != nil {
+		t.Fatalf("WriteBookToFile: %v", err)
+	}
+}

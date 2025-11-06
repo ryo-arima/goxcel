@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gxl>
+  <sheet name="Data">
+    <grid ref="A1">
+      <row>
+        <cell>{{name}}</cell>
+        <cell>{{value}}</cell>
+      </row>
+    </grid>
+  </sheet>
+</gxl>

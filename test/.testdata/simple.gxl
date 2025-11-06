@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gxl>
+  <sheet name="Sheet1">
+    <grid ref="A1">
+      <row>
+        <cell>Hello</cell>
+        <cell>World</cell>
+      </row>
+    </grid>
+  </sheet>
+</gxl>
