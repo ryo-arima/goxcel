@@ -4,73 +4,127 @@ graph TB
         DATA[Data File<br/>.json/.yaml]
     end
     
-    subgraph "Application Layer"
+    subgraph "Command Layer"
         CLI[CLI Tool<br/>goxcel command]
-        LIB[Go Library<br/>import package]
+        ROOT[Root Command<br/>Cobra CLI]
+        GENCMD[Generate Command]
+        FMTCMD[Format Command]
     end
     
-    subgraph "Core Processing"
-        CONFIG[Config Layer<br/>BaseConfig + Logger]
-        CTRL[Controller Layer<br/>Command Handlers]
-        
-        subgraph "Business Logic"
-            BOOK[BookUsecase<br/>Workbook Rendering]
-            SHEET[SheetUsecase<br/>Sheet Rendering]
-            CELL[CellUsecase<br/>Cell Operations]
-        end
-        
-        subgraph "Data Access"
-            GXLREPO[GxlRepository<br/>Template Parser]
-            XLSXREPO[XlsxRepository<br/>XLSX Writer]
-        end
-        
-        subgraph "Models"
-            GXLMODEL[GXL Models<br/>AST Nodes]
-            XLSXMODEL[XLSX Models<br/>Workbook/Sheet/Cell]
-        end
+    subgraph "Controller Layer"
+        GENCTRL[GenerateController<br/>RunGenerate<br/>InitGenerateCmd]
+        FMTCTRL[FormatController<br/>InitFormatCmd]
+    end
+    
+    subgraph "Usecase Layer - Interfaces"
+        BOOKIF["&lt;&lt;interface&gt;&gt;<br/>BookUsecase<br/>────────<br/>Render(ctx, gxl, data)"]
+        FMTIF["&lt;&lt;interface&gt;&gt;<br/>FormatUsecase<br/>────────<br/>Format(path)"]
+    end
+    
+    subgraph "Usecase Layer - Implementations"
+        BOOKIMPL[bookUsecase struct<br/>────────<br/>conf: BaseConfig<br/>logger: Logger<br/>sheet: sheetRenderer<br/>xlsx: XlsxRepository]
+        FMTIMPL[DefaultFormatUsecase<br/>────────<br/>conf: BaseConfig<br/>logger: Logger<br/>gxl: GxlRepository]
+        SHEETRDR[sheetRenderer struct<br/>internal<br/>────────<br/>RenderSheet<br/>renderGrid<br/>expandGridRows]
+        CELLHLP[cellHelper struct<br/>internal<br/>────────<br/>ExpandMustache<br/>InferCellType<br/>ParseTypeHint]
+    end
+    
+    subgraph "Repository Layer - Interfaces"
+        GXLIF["&lt;&lt;interface&gt;&gt;<br/>GxlRepository<br/>────────<br/>ReadGxl(path)<br/>FormatGxl(path)"]
+        XLSXIF["&lt;&lt;interface&gt;&gt;<br/>XlsxRepository<br/>────────<br/>CreateBook/Sheet/Cell<br/>UpdateBook/Sheet/Cell<br/>DeleteBook/Sheet<br/>ClearCell"]
+    end
+    
+    subgraph "Repository Layer - Implementations"
+        GXLIMPL[gxlRepository struct<br/>────────<br/>Conf: BaseConfig<br/>logger: Logger]
+        XLSXIMPL[xlsxRepository struct<br/>────────<br/>Conf: BaseConfig<br/>logger: Logger]
+    end
+    
+    subgraph "Model Layer"
+        GXLMODEL[GXL Models<br/>────────<br/>SheetTag, GridTag<br/>RowTag, CellTag<br/>ForTag, IfTag]
+        XLSXMODEL[XLSX Models<br/>────────<br/>Book, Sheet, Cell<br/>CellType, Style<br/>MergeRange]
+    end
+    
+    subgraph "Utility Layer"
+        LOGGER[Logger<br/>────────<br/>DEBUG/INFO/WARN<br/>ERROR/FATAL]
+        UNITS[Units<br/>────────<br/>ParseColWidth<br/>ParseRowHeight<br/>PxToColWidth]
+        CONFIG[BaseConfig<br/>────────<br/>Logger<br/>DefaultRowHeight<br/>DefaultColumnWidth]
     end
     
     subgraph "Output Layer"
         XLSX[Excel File<br/>.xlsx output]
+        FMTGXL[Formatted GXL<br/>pretty-printed]
     end
     
+    %% Input Flow
     GXL --> CLI
     DATA --> CLI
-    GXL --> LIB
-    DATA --> LIB
+    CLI --> ROOT
+    ROOT --> GENCMD
+    ROOT --> FMTCMD
     
-    CLI --> CONFIG
-    LIB --> CONFIG
+    %% Command to Controller
+    GENCMD --> GENCTRL
+    FMTCMD --> FMTCTRL
     
-    CONFIG --> CTRL
-    CTRL --> BOOK
+    %% Controller to Interface
+    GENCTRL --> BOOKIF
+    FMTCTRL --> FMTIF
     
-    BOOK --> SHEET
-    SHEET --> CELL
+    %% Interface Implementation
+    BOOKIF -.implements.-> BOOKIMPL
+    FMTIF -.implements.-> FMTIMPL
+    GXLIF -.implements.-> GXLIMPL
+    XLSXIF -.implements.-> XLSXIMPL
     
-    BOOK --> GXLREPO
-    BOOK --> XLSXREPO
+    %% Usecase Dependencies
+    BOOKIMPL --> SHEETRDR
+    SHEETRDR --> CELLHLP
+    BOOKIMPL --> XLSXIF
+    FMTIMPL --> GXLIF
     
-    GXLREPO --> GXLMODEL
-    XLSXREPO --> XLSXMODEL
+    %% Repository to Model
+    GXLIMPL --> GXLMODEL
+    XLSXIMPL --> XLSXMODEL
+    SHEETRDR --> GXLMODEL
+    CELLHLP --> XLSXMODEL
     
-    SHEET --> GXLMODEL
-    SHEET --> XLSXMODEL
-    CELL --> XLSXMODEL
+    %% Utility Dependencies
+    CONFIG -.injected.-> BOOKIMPL
+    CONFIG -.injected.-> FMTIMPL
+    CONFIG -.injected.-> GXLIMPL
+    CONFIG -.injected.-> XLSXIMPL
+    LOGGER -.used by.-> BOOKIMPL
+    LOGGER -.used by.-> FMTIMPL
+    LOGGER -.used by.-> GXLIMPL
+    LOGGER -.used by.-> XLSXIMPL
+    UNITS -.used by.-> XLSXIMPL
     
-    XLSXREPO --> XLSX
+    %% Output Flow
+    XLSXIMPL --> XLSX
+    GXLIMPL --> FMTGXL
     
-    style GXL fill:#e1f5ff
-    style DATA fill:#e1f5ff
-    style CLI fill:#fff3e0
-    style LIB fill:#fff3e0
-    style CONFIG fill:#f3e5f5
-    style CTRL fill:#f3e5f5
-    style BOOK fill:#e8f5e9
-    style SHEET fill:#e8f5e9
-    style CELL fill:#e8f5e9
-    style GXLREPO fill:#fff9c4
-    style XLSXREPO fill:#fff9c4
-    style GXLMODEL fill:#fce4ec
-    style XLSXMODEL fill:#fce4ec
-    style XLSX fill:#e0f2f1
+    %% Styling
+    classDef inputClass fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef commandClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef controllerClass fill:#ffe0b2,stroke:#e65100,stroke-width:2px
+    classDef interfaceClass fill:#fff9c4,stroke:#f57f17,stroke-width:3px,stroke-dasharray: 5 5
+    classDef implClass fill:#c8e6c9,stroke:#1b5e20,stroke-width:2px
+    classDef internalClass fill:#b2dfdb,stroke:#004d40,stroke-width:2px
+    classDef repoInterfaceClass fill:#ffccbc,stroke:#bf360c,stroke-width:3px,stroke-dasharray: 5 5
+    classDef repoImplClass fill:#ffe0b2,stroke:#e65100,stroke-width:2px
+    classDef modelClass fill:#f8bbd0,stroke:#880e4f,stroke-width:2px
+    classDef utilClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef outputClass fill:#b2dfdb,stroke:#00695c,stroke-width:2px
+    
+    class GXL,DATA inputClass
+    class CLI,ROOT,GENCMD,FMTCMD commandClass
+    class GENCTRL,FMTCTRL controllerClass
+    class BOOKIF,FMTIF interfaceClass
+    class BOOKIMPL,FMTIMPL implClass
+    class SHEETRDR,CELLHLP internalClass
+    class GXLIF,XLSXIF repoInterfaceClass
+    class GXLIMPL,XLSXIMPL repoImplClass
+    class GXLMODEL,XLSXMODEL modelClass
+    class LOGGER,UNITS,CONFIG utilClass
+    class XLSX,FMTGXL outputClass
+
+

@@ -375,3 +375,107 @@ func TestMCode_String(t *testing.T) {
 		})
 	}
 }
+
+func TestNewLogger_AllLogLevels(t *testing.T) {
+	// Test all log level branches in NewLogger (currently 62.5% coverage)
+	tests := []struct {
+		name      string
+		level     string
+		wantLevel util.LogLevel
+	}{
+		{"DEBUG level", "DEBUG", util.DEBUG},
+		{"debug lowercase", "debug", util.DEBUG},
+		{"INFO level", "INFO", util.INFO},
+		{"info lowercase", "info", util.INFO},
+		{"WARN level", "WARN", util.WARN},
+		{"warn lowercase", "warn", util.WARN},
+		{"ERROR level", "ERROR", util.ERROR},
+		{"error lowercase", "error", util.ERROR},
+		{"FATAL level", "FATAL", util.FATAL},
+		{"fatal lowercase", "fatal", util.FATAL},
+		{"default (unknown)", "UNKNOWN", util.INFO},
+		{"empty string", "", util.INFO},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lg := util.NewLogger(util.LoggerConfig{
+				Level:      tt.level,
+				Output:     "stdout",
+				Structured: true,
+			})
+			// We can't directly access level, but we can verify logger was created
+			if lg == nil {
+				t.Fatal("NewLogger returned nil")
+			}
+		})
+	}
+}
+
+func TestNewLogger_OutputVariations(t *testing.T) {
+	// Test all output branches in NewLogger
+	t.Run("stdout explicit", func(t *testing.T) {
+		lg := util.NewLogger(util.LoggerConfig{
+			Level:      "INFO",
+			Output:     "stdout",
+			Structured: true,
+		})
+		if lg == nil {
+			t.Fatal("NewLogger returned nil")
+		}
+	})
+
+	t.Run("stdout default (empty)", func(t *testing.T) {
+		lg := util.NewLogger(util.LoggerConfig{
+			Level:      "INFO",
+			Output:     "",
+			Structured: true,
+		})
+		if lg == nil {
+			t.Fatal("NewLogger returned nil")
+		}
+	})
+
+	t.Run("stderr", func(t *testing.T) {
+		lg := util.NewLogger(util.LoggerConfig{
+			Level:      "INFO",
+			Output:     "stderr",
+			Structured: true,
+		})
+		if lg == nil {
+			t.Fatal("NewLogger returned nil")
+		}
+	})
+
+	t.Run("file output valid", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp(t.TempDir(), "logger-*.log")
+		if err != nil {
+			t.Fatalf("create temp file: %v", err)
+		}
+		tmpPath := tmpFile.Name()
+		_ = tmpFile.Close()
+
+		lg := util.NewLogger(util.LoggerConfig{
+			Level:      "INFO",
+			Output:     tmpPath,
+			Structured: true,
+		})
+		if lg == nil {
+			t.Fatal("NewLogger returned nil")
+		}
+		lg.INFO(util.SYS1, "test")
+	})
+
+	t.Run("file output invalid path", func(t *testing.T) {
+		// Use invalid path to trigger error branch
+		lg := util.NewLogger(util.LoggerConfig{
+			Level:      "INFO",
+			Output:     "/nonexistent/path/to/file.log",
+			Structured: true,
+		})
+		if lg == nil {
+			t.Fatal("NewLogger returned nil even with invalid file path")
+		}
+		// Logger should fall back to stdout
+	})
+}

@@ -288,3 +288,237 @@ func TestRenderSheet_GridWithRef(t *testing.T) {
 		t.Error("expected cells with style")
 	}
 }
+
+func TestRenderSheet_LoopConstructs(t *testing.T) {
+	// Test handleFor, renderLoop, renderMapLoop, createLoopScope (low coverage)
+	conf := config.NewBaseConfig()
+	r := usecase.NewBookUsecase(conf)
+
+	gxl := &model.GXL{
+		Sheets: []model.SheetTag{
+			{
+				Name: "Loops",
+				Nodes: []any{
+					// Array loop
+					model.ForTag{
+						Each: "item in items",
+						Body: []any{model.GridTag{Rows: []model.GridRowTag{{Cells: []string{"{{ item }}"}}}}},
+					},
+					// Map loop
+					model.ForTag{
+						Each: "k,v in mapping",
+						Body: []any{model.GridTag{Rows: []model.GridRowTag{{Cells: []string{"{{ k }}", "{{ v }}"}}}}},
+					},
+					// Nested loop
+					model.ForTag{
+						Each: "outer in nested",
+						Body: []any{
+							model.ForTag{
+								Each: "inner in outer.items",
+								Body: []any{model.GridTag{Rows: []model.GridRowTag{{Cells: []string{"{{ inner }}"}}}}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	data := map[string]any{
+		"items":   []any{"a", "b", "c"},
+		"mapping": map[string]any{"key1": "val1", "key2": "val2"},
+		"nested": []any{
+			map[string]any{"items": []any{"x", "y"}},
+			map[string]any{"items": []any{"z"}},
+		},
+	}
+
+	book, err := r.Render(context.Background(), gxl, data)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	if len(book.Sheets) != 1 {
+		t.Fatalf("expected 1 sheet, got %d", len(book.Sheets))
+	}
+
+	sheet := book.Sheets[0]
+	if len(sheet.Cells) == 0 {
+		t.Fatal("expected cells from loops")
+	}
+
+	// Verify we have cells from array loop
+	hasA := false
+	for _, cell := range sheet.Cells {
+		if cell.Value == "a" {
+			hasA = true
+			break
+		}
+	}
+	if !hasA {
+		t.Error("expected cell with value 'a' from array loop")
+	}
+}
+
+func TestRenderSheet_ConditionalRendering(t *testing.T) {
+	// Test if tag conditional rendering
+	conf := config.NewBaseConfig()
+	r := usecase.NewBookUsecase(conf)
+
+	gxl := &model.GXL{
+		Sheets: []model.SheetTag{
+			{
+				Name: "Conditionals",
+				Nodes: []any{
+					model.IfTag{
+						Cond: "show",
+						Then: []any{model.GridTag{Rows: []model.GridRowTag{{Cells: []string{"visible"}}}}},
+					},
+					model.IfTag{
+						Cond: "hide",
+						Then: []any{model.GridTag{Rows: []model.GridRowTag{{Cells: []string{"hidden"}}}}},
+					},
+				},
+			},
+		},
+	}
+
+	data := map[string]any{
+		"show": true,
+		"hide": false,
+	}
+
+	book, err := r.Render(context.Background(), gxl, data)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	sheet := book.Sheets[0]
+
+	// Should have "visible" but not "hidden"
+	hasVisible := false
+	hasHidden := false
+	for _, cell := range sheet.Cells {
+		if cell.Value == "visible" {
+			hasVisible = true
+		}
+		if cell.Value == "hidden" {
+			hasHidden = true
+		}
+	}
+
+	if !hasVisible {
+		t.Error("expected 'visible' cell")
+	}
+	if hasHidden {
+		t.Error("unexpected 'hidden' cell")
+	}
+}
+
+func TestRenderSheet_EdgeCases(t *testing.T) {
+	// Test edge cases: empty grids, invalid refs, etc.
+	conf := config.NewBaseConfig()
+	r := usecase.NewBookUsecase(conf)
+
+	gxl := &model.GXL{
+		Sheets: []model.SheetTag{
+			{
+				Name: "EdgeCases",
+				Nodes: []any{
+					// Empty grid
+					model.GridTag{Rows: []model.GridRowTag{}},
+					// Grid with empty rows
+					model.GridTag{Rows: []model.GridRowTag{{Cells: []string{}}}},
+					// Grid with empty cells
+					model.GridTag{Rows: []model.GridRowTag{{Cells: []string{"", "", ""}}}},
+					// Invalid ref (should fall back to sequential)
+					model.GridTag{Ref: "INVALID", Rows: []model.GridRowTag{{Cells: []string{"test"}}}},
+					// Merge with valid range
+					model.MergeTag{Range: "A1:B2"},
+				},
+			},
+		},
+	}
+
+	book, err := r.Render(context.Background(), gxl, nil)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	if len(book.Sheets) != 1 {
+		t.Fatalf("expected 1 sheet, got %d", len(book.Sheets))
+	}
+
+	sheet := book.Sheets[0]
+
+	// Should have at least the "test" cell
+	hasTest := false
+	for _, cell := range sheet.Cells {
+		if cell.Value == "test" {
+			hasTest = true
+			break
+		}
+	}
+	if !hasTest {
+		t.Error("expected 'test' cell")
+	}
+
+	// Should have merge
+	if len(sheet.Merges) != 1 {
+		t.Errorf("expected 1 merge, got %d", len(sheet.Merges))
+	}
+}
+
+func TestRenderSheet_ParseA1RefVariations(t *testing.T) {
+	// Test parseA1Ref with various formats (currently 35.2% coverage)
+	conf := config.NewBaseConfig()
+	r := usecase.NewBookUsecase(conf)
+
+	gxl := &model.GXL{
+		Sheets: []model.SheetTag{
+			{
+				Name: "A1Refs",
+				Nodes: []any{
+					// Various valid A1 references
+					model.GridTag{Ref: "A1", Rows: []model.GridRowTag{{Cells: []string{"A1"}}}},
+					model.GridTag{Ref: "Z10", Rows: []model.GridRowTag{{Cells: []string{"Z10"}}}},
+					model.GridTag{Ref: "AA100", Rows: []model.GridRowTag{{Cells: []string{"AA100"}}}},
+					model.GridTag{Ref: "AB999", Rows: []model.GridRowTag{{Cells: []string{"AB999"}}}},
+					// Invalid refs should fall back to sequential
+					model.GridTag{Ref: "123", Rows: []model.GridRowTag{{Cells: []string{"invalid1"}}}},
+					model.GridTag{Ref: "", Rows: []model.GridRowTag{{Cells: []string{"empty"}}}},
+				},
+			},
+		},
+	}
+
+	book, err := r.Render(context.Background(), gxl, nil)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	sheet := book.Sheets[0]
+	if len(sheet.Cells) == 0 {
+		t.Fatal("expected cells")
+	}
+
+	// Verify specific refs exist
+	expectedRefs := map[string]bool{
+		"A1":    false,
+		"Z10":   false,
+		"AA100": false,
+		"AB999": false,
+	}
+
+	for _, cell := range sheet.Cells {
+		if _, ok := expectedRefs[cell.Ref]; ok {
+			expectedRefs[cell.Ref] = true
+		}
+	}
+
+	for ref, found := range expectedRefs {
+		if !found {
+			t.Errorf("expected cell at ref %s", ref)
+		}
+	}
+}
