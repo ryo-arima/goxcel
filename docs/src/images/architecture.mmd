@@ -16,25 +16,19 @@ graph TB
         FMTCTRL[FormatController<br/>InitFormatCmd]
     end
     
-    subgraph "Usecase Layer - Interfaces"
+    subgraph "Usecase Layer"
         BOOKIF["&lt;&lt;interface&gt;&gt;<br/>BookUsecase<br/>────────<br/>Render(ctx, gxl, data)"]
-        FMTIF["&lt;&lt;interface&gt;&gt;<br/>FormatUsecase<br/>────────<br/>Format(path)"]
-    end
-    
-    subgraph "Usecase Layer - Implementations"
         BOOKIMPL[bookUsecase struct<br/>────────<br/>conf: BaseConfig<br/>logger: Logger<br/>sheet: sheetRenderer<br/>xlsx: XlsxRepository]
+        FMTIF["&lt;&lt;interface&gt;&gt;<br/>FormatUsecase<br/>────────<br/>Format(path)"]
         FMTIMPL[DefaultFormatUsecase<br/>────────<br/>conf: BaseConfig<br/>logger: Logger<br/>gxl: GxlRepository]
         SHEETRDR[sheetRenderer struct<br/>internal<br/>────────<br/>RenderSheet<br/>renderGrid<br/>expandGridRows]
         CELLHLP[cellHelper struct<br/>internal<br/>────────<br/>ExpandMustache<br/>InferCellType<br/>ParseTypeHint]
     end
     
-    subgraph "Repository Layer - Interfaces"
+    subgraph "Repository Layer"
         GXLIF["&lt;&lt;interface&gt;&gt;<br/>GxlRepository<br/>────────<br/>ReadGxl(path)<br/>FormatGxl(path)"]
-        XLSXIF["&lt;&lt;interface&gt;&gt;<br/>XlsxRepository<br/>────────<br/>CreateBook/Sheet/Cell<br/>UpdateBook/Sheet/Cell<br/>DeleteBook/Sheet<br/>ClearCell"]
-    end
-    
-    subgraph "Repository Layer - Implementations"
         GXLIMPL[gxlRepository struct<br/>────────<br/>Conf: BaseConfig<br/>logger: Logger]
+        XLSXIF["&lt;&lt;interface&gt;&gt;<br/>XlsxRepository<br/>────────<br/>CreateBook/Sheet/Cell<br/>UpdateBook/Sheet/Cell<br/>DeleteBook/Sheet<br/>ClearCell"]
         XLSXIMPL[xlsxRepository struct<br/>────────<br/>Conf: BaseConfig<br/>logger: Logger]
     end
     
