@@ -1,11 +1,27 @@
 package model
 
+// BookNodeType represents the type of node at book level
+type BookNodeType int
+
+const (
+	BookNodeTypeImport BookNodeType = iota
+	BookNodeTypeSheet
+)
+
+// BookNode represents a node at book level (Import or Sheet) with order preserved
+type BookNode struct {
+	Type   BookNodeType
+	Import *ImportTag
+	Sheet  *SheetTag
+}
+
 // GXL represents the root structure of a .gxl template file.
 type GXL struct {
 	HeaderTag HeaderTag
 	BookTag   BookTag
-	Imports   []ImportTag // Import tags at book level
-	Sheets    []SheetTag
+	Imports   []ImportTag // Import tags at book level (deprecated - use BookNodes)
+	Sheets    []SheetTag  // (deprecated - use BookNodes)
+	BookNodes []BookNode  // Ordered book-level nodes (Import and Sheet in definition order)
 }
 
 // HeaderTag holds global metadata for the GXL template.

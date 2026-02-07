@@ -122,9 +122,15 @@ func parseGXL(r io.Reader) (model.GXL, error) {
 				if src == "" || sheet == "" {
 					return model.GXL{}, fmt.Errorf("Import tag requires both 'src' and 'sheet' attributes")
 				}
-				gxl.Imports = append(gxl.Imports, model.ImportTag{
+				importTag := model.ImportTag{
 					Src:   src,
 					Sheet: sheet,
+				}
+				gxl.Imports = append(gxl.Imports, importTag)
+				// Add to BookNodes to preserve order
+				gxl.BookNodes = append(gxl.BookNodes, model.BookNode{
+					Type:   model.BookNodeTypeImport,
+					Import: &importTag,
 				})
 			case "Sheet":
 				sheet, err := parseSheetTag(decoder, se)
@@ -132,6 +138,11 @@ func parseGXL(r io.Reader) (model.GXL, error) {
 					return model.GXL{}, err
 				}
 				gxl.Sheets = append(gxl.Sheets, sheet)
+				// Add to BookNodes to preserve order
+				gxl.BookNodes = append(gxl.BookNodes, model.BookNode{
+					Type:  model.BookNodeTypeSheet,
+					Sheet: &sheet,
+				})
 			}
 		}
 	}

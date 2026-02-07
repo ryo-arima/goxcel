@@ -43,25 +43,54 @@ func (rcv *bookUsecase) Render(ctx context.Context, gxl *model.GXL, data any) (*
 		baseDir:      rcv.conf.BaseDir,
 	}
 
-	// Process imports at book level (creates new sheets)
-	for _, importTag := range gxl.Imports {
-		importedSheets, err := rcv.resolveAndRenderImports(ctx, importTag, normalizedData, importCtx)
-		if err != nil {
-			return nil, err
+	// Process book nodes in definition order
+	if len(gxl.BookNodes) > 0 {
+		// Use BookNodes if available (preserves definition order)
+		for _, node := range gxl.BookNodes {
+			switch node.Type {
+			case model.BookNodeTypeImport:
+				if node.Import != nil {
+					importedSheets, err := rcv.resolveAndRenderImports(ctx, *node.Import, normalizedData, importCtx)
+					if err != nil {
+						return nil, err
+					}
+					for _, importedSheet := range importedSheets {
+						book.AddSheet(importedSheet)
+					}
+				}
+			case model.BookNodeTypeSheet:
+				if node.Sheet != nil {
+					renderer := newSheetRenderer(rcv.conf)
+					sheet, err := renderer.RenderSheet(ctx, node.Sheet, normalizedData)
+					if err != nil {
+						return nil, err
+					}
+					book.AddSheet(sheet)
+				}
+			}
 		}
-		for _, importedSheet := range importedSheets {
-			book.AddSheet(importedSheet)
+	} else {
+		// Fallback to old behavior (imports first, then sheets)
+		// Process imports at book level (creates new sheets)
+		for _, importTag := range gxl.Imports {
+			importedSheets, err := rcv.resolveAndRenderImports(ctx, importTag, normalizedData, importCtx)
+			if err != nil {
+				return nil, err
+			}
+			for _, importedSheet := range importedSheets {
+				book.AddSheet(importedSheet)
+			}
 		}
-	}
 
-	// Render each sheet defined in the main file
-	for _, sheetTag := range gxl.Sheets {
-		renderer := newSheetRenderer(rcv.conf)
-		sheet, err := renderer.RenderSheet(ctx, &sheetTag, normalizedData)
-		if err != nil {
-			return nil, err
+		// Render each sheet defined in the main file
+		for _, sheetTag := range gxl.Sheets {
+			renderer := newSheetRenderer(rcv.conf)
+			sheet, err := renderer.RenderSheet(ctx, &sheetTag, normalizedData)
+			if err != nil {
+				return nil, err
+			}
+			book.AddSheet(sheet)
 		}
-		book.AddSheet(sheet)
 	}
 
 	return book, nil
