@@ -59,6 +59,8 @@ goxcel transforms human-readable `.gxl` templates into Excel `.xlsx` files using
 ### Core Features
 - ✅ **Template-based generation** with `.gxl` format
 - ✅ **Grid syntax** with pipe-delimited tables
+- ✅ **Table structure** with `<Table>`, `<Row>`, `<Col>` for structured data iteration
+- ✅ **Template import** with `<Import>` tag for modular templates
 - ✅ **Variable interpolation** with `{{ expr }}` syntax
 - ✅ **Cell type inference**: Automatic detection of numbers, formulas, booleans, dates
 - ✅ **Type hints**: Explicit type control with `{{ value:type }}` syntax

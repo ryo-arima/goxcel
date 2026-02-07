@@ -748,6 +748,147 @@ This document provides **complete, working examples** of GXL templates with samp
 
 ---
 
+## Example 9: Table Structure with Row and Column Loops
+
+### Template (`product-table.gxl`)
+
+```xml
+<Book>
+  <Sheet name="Products">
+    <Table>
+      <Row>
+        <Col>**Product**</Col>
+        <Col>**Category**</Col>
+        <Col>**Price**</Col>
+        <Col>**Stock**</Col>
+      </Row>
+      
+      <Row each="product in products">
+        <Col>{{ product.name }}</Col>
+        <Col>{{ product.category }}</Col>
+        <Col>{{ product.price:number }}</Col>
+        <Col>{{ product.stock:number }}</Col>
+      </Row>
+    </Table>
+  </Sheet>
+  
+  <Sheet name="Horizontal">
+    <Table>
+      <Row>
+        <Col each="header in headers">**{{ header }}**</Col>
+      </Row>
+      <Row>
+        <Col each="value in values">{{ value:number }}</Col>
+      </Row>
+    </Table>
+  </Sheet>
+</Book>
+```
+
+### Data Context
+
+```json
+{
+  "products": [
+    {"name": "Laptop", "category": "Electronics", "price": 999.99, "stock": 15},
+    {"name": "Mouse", "category": "Accessories", "price": 29.99, "stock": 50},
+    {"name": "Keyboard", "category": "Accessories", "price": 79.99, "stock": 35}
+  ],
+  "headers": ["Q1", "Q2", "Q3", "Q4"],
+  "values": [1000, 1500, 1200, 1800]
+}
+```
+
+### Expected Output
+
+**Sheet: Products** (Vertical iteration)
+
+| A | B | C | D |
+|---|---|---|---|
+| **Product** | **Category** | **Price** | **Stock** |
+| Laptop | Electronics | 999.99 | 15 |
+| Mouse | Accessories | 29.99 | 50 |
+| Keyboard | Accessories | 79.99 | 35 |
+
+**Sheet: Horizontal** (Horizontal iteration)
+
+| A | B | C | D |
+|---|---|---|---|
+| **Q1** | **Q2** | **Q3** | **Q4** |
+| 1000 | 1500 | 1200 | 1800 |
+
+**Key Features**:
+- `<Table>` wraps the entire structured data
+- `<Row each="...">` creates rows vertically (downward)
+- `<Col each="...">` creates columns horizontally (rightward)
+- No pipe `|` delimiters needed in Table structure
+- Cleaner than Grid for tabular data
+
+---
+
+## Example 10: Template Import for Modular Design
+
+### Header Template (`common/header.gxl`)
+
+```xml
+<Book>
+  <Sheet name="Header">
+    <Grid>
+    | **{{ title }}** |
+    | Date: {{ date }} |
+    | | |
+    </Grid>
+  </Sheet>
+</Book>
+```
+
+### Main Template (`report.gxl`)
+
+```xml
+<Book>
+  <Import src="common/header.gxl" />
+  
+  <Sheet name="Sales">
+    <Grid>
+    | Region | Amount |
+    </Grid>
+    
+    <For each="item in items">
+      <Grid>
+      | {{ item.region }} | {{ item.amount:number }} |
+      </Grid>
+    </For>
+  </Sheet>
+</Book>
+```
+
+### Data Context
+
+```json
+{
+  "title": "Sales Report",
+  "date": "2026-02-08",
+  "items": [
+    {"region": "North", "amount": 15000},
+    {"region": "South", "amount": 22000}
+  ]
+}
+```
+
+### Expected Output
+
+The workbook will contain **2 sheets** in definition order:
+1. **Header** sheet (from imported template)
+2. **Sales** sheet (from main template)
+
+**Key Features**:
+- `<Import>` reuses common templates
+- Circular reference detection prevents infinite loops
+- Sheets appear in definition order (imports first)
+- Maximum import depth of 10 levels
+
+---
+
 ## Running Examples
 
 ### Using goxcel CLI

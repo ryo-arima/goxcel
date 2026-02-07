@@ -67,7 +67,129 @@ Open `hello.xlsx` in Excel or LibreOffice:
 
 Headers will be **bold**.
 
-## Example 2: Using Loops
+## Example 2: Using Table Structure
+
+Create `products.gxl`:
+
+```xml
+<Book>
+  <Sheet name="Products">
+    <Table>
+      <Row>
+        <Col>**Item**</Col>
+        <Col>**Quantity**</Col>
+        <Col>**Price**</Col>
+      </Row>
+      
+      <Row each="item in items">
+        <Col>{{ item.name }}</Col>
+        <Col>{{ item.quantity:number }}</Col>
+        <Col>{{ item.price:number }}</Col>
+      </Row>
+      
+      <Row>
+        <Col>**Total**</Col>
+        <Col></Col>
+        <Col>{{ total:number }}</Col>
+      </Row>
+    </Table>
+  </Sheet>
+</Book>
+```
+
+Create `products-data.json`:
+
+```json
+{
+  "items": [
+    {"name": "Widget A", "quantity": 5, "price": 10.00},
+    {"name": "Widget B", "quantity": 3, "price": 25.50}
+  ],
+  "total": 102.50
+}
+```
+
+Generate:
+
+```bash
+goxcel generate -t products.gxl -d products-data.json -o products.xlsx
+```
+
+**Output**: A clean table with header row, data rows (one per item), and total row.
+
+**Key Differences from Grid**:
+- No pipe `|` delimiters needed
+- `<Row each="...">` iterates vertically (creates new rows downward)
+- `<Col each="...">` iterates horizontally (creates new columns rightward)
+- Cleaner syntax for structured tabular data
+
+---
+
+## Example 3: Using Template Import
+
+Create `common/header.gxl`:
+
+```xml
+<Book>
+  <Sheet name="Header">
+    <Grid>
+    | **{{ title }}** |
+    | Generated: {{ date }} |
+    </Grid>
+  </Sheet>
+</Book>
+```
+
+Create `report.gxl`:
+
+```xml
+<Book>
+  <Import src="common/header.gxl" />
+  
+  <Sheet name="Data">
+    <Table>
+      <Row>
+        <Col>**Item**</Col>
+        <Col>**Value**</Col>
+      </Row>
+      <Row each="item in items">
+        <Col>{{ item.name }}</Col>
+        <Col>{{ item.value:number }}</Col>
+      </Row>
+    </Table>
+  </Sheet>
+</Book>
+```
+
+Create `report-data.json`:
+
+```json
+{
+  "title": "Monthly Report",
+  "date": "2026-02-08",
+  "items": [
+    {"name": "Revenue", "value": 50000},
+    {"name": "Expenses", "value": 30000}
+  ]
+}
+```
+
+Generate:
+
+```bash
+goxcel generate -t report.gxl -d report-data.json -o report.xlsx
+```
+
+**Output**: Two sheets - "Header" (from imported template) and "Data" (from main template).
+
+**Key Features**:
+- Reuse common templates with `<Import>`
+- Sheets appear in definition order
+- Share data context across imported templates
+
+---
+
+## Example 4: Using For Loops
 
 Create `invoice.gxl`:
 
