@@ -1,0 +1,11 @@
+<Book name="SalesData">
+  <Sheet name="MonthlySales">
+    <Grid>
+    | Product | January | February | March |
+    | ------- | ------- | -------- | ----- |
+    | Widget A | 1000 | 1200 | 1100 |
+    | Widget B | 800 | 950 | 900 |
+    | Gadget X | 1500 | 1600 | 1700 |
+    </Grid>
+  </Sheet>
+</Book>

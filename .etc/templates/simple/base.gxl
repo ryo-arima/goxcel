@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Book>
+  <Sheet name="Sheet1">
+    <!-- Title -->
+    <Grid font="Arial" font_size="14" fill_color="#E6F2FF" border="thin">
+      | {{ title }} |  |  |
+    </Grid>
+    <Merge range="A1:C1"></Merge>
+    
+    <!-- Header Row -->
+    <Grid font="Arial" font_size="11" fill_color="#D9E9F7" border="thin">
+      | Name | Value | Description |
+    </Grid>
+    
+    <!-- Data Rows -->
+    <For each="item in items">
+      <Grid border="thin">
+        | {{ item.name }} | {{ item.value }} | {{ item.description }} |
+      </Grid>
+    </For>
+  </Sheet>
+</Book>

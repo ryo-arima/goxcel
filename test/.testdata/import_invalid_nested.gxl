@@ -1,0 +1,9 @@
+<Book name="Invalid">
+  <Sheet name="Outer">
+    <Sheet name="Inner">
+      <Grid>
+      | Invalid | Nesting |
+      </Grid>
+    </Sheet>
+  </Sheet>
+</Book>

@@ -21,6 +21,7 @@ import (
 func InitGenerateCmd() *cobra.Command {
 	var (
 		templatePath string
+		templateName string
 		dataPath     string
 		outputPath   string
 		dryRun       bool
@@ -31,11 +32,29 @@ func InitGenerateCmd() *cobra.Command {
 		Short: "Generate a .gxl template to .xlsx",
 		Long:  "Generate a .gxl template with optional JSON or YAML data into an Excel .xlsx file.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if templatePath == "" && len(args) > 0 {
+			// Handle template name (from .etc/templates)
+			if templateName != "" {
+				templatesDir := ".etc/templates"
+				templatePath = filepath.Join(templatesDir, templateName, "base.gxl")
+				
+				// Check if template exists
+				if _, err := os.Stat(templatePath); err != nil {
+					return fmt.Errorf("template '%s' not found in %s", templateName, templatesDir)
+				}
+				
+				// Auto-load data file if exists
+				if dataPath == "" {
+					dataFile := filepath.Join(templatesDir, templateName, "base.yaml")
+					if _, err := os.Stat(dataFile); err == nil {
+						dataPath = dataFile
+					}
+				}
+			} else if templatePath == "" && len(args) > 0 {
 				templatePath = args[0]
 			}
+			
 			if strings.TrimSpace(templatePath) == "" {
-				return fmt.Errorf("template path is required (pass as arg or --template)")
+				return fmt.Errorf("template path is required (pass as arg, --template, or --template-name)")
 			}
 			if err := RunGenerate(templatePath, dataPath, outputPath, dryRun); err != nil {
 				return err
@@ -45,6 +64,7 @@ func InitGenerateCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&templatePath, "template", "t", "", "path to .gxl template file")
+	cmd.Flags().StringVar(&templateName, "template-name", "", "template name from .etc/templates (e.g., 'b4-landscape')")
 	cmd.Flags().StringVarP(&dataPath, "data", "d", "", "path to JSON or YAML data file (optional)")
 	cmd.Flags().StringVarP(&outputPath, "output", "o", "", "output .xlsx file path (optional; if empty with --dry-run prints summary)")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "do not write .xlsx; print a summary instead")

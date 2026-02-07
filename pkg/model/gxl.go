@@ -4,6 +4,7 @@ package model
 type GXL struct {
 	HeaderTag HeaderTag
 	BookTag   BookTag
+	Imports   []ImportTag // Import tags at book level
 	Sheets    []SheetTag
 }
 
@@ -165,4 +166,10 @@ type IfTag struct {
 	Cond string
 	Then []any
 	Else []any
+}
+
+// ImportTag represents <Import src="..." sheet="..." /> for importing external .gxl files.
+type ImportTag struct {
+	Src   string // Path to the external .gxl file (relative or absolute)
+	Sheet string // Name of the sheet to import (required)
 }

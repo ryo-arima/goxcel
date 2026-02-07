@@ -1,0 +1,9 @@
+<Book name="Common">
+  <Sheet name="Headers">
+    <Grid>
+    | Company | Date | Status |
+    | ------- | ---- | ------ |
+    | Acme Inc | 2026-02-08 | Active |
+    </Grid>
+  </Sheet>
+</Book>

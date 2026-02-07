@@ -36,7 +36,25 @@ func (rcv *bookUsecase) Render(ctx context.Context, gxl *model.GXL, data any) (*
 	// Normalize data to map[string]any for consistent access
 	normalizedData := rcv.normalizeData(data)
 
-	// Render each sheet using an internal renderer (no same-layer dependency)
+	// Initialize import context for circular detection
+	importCtx := &importContext{
+		visitedFiles: make(map[string]bool),
+		importDepth:  0,
+		baseDir:      rcv.conf.BaseDir,
+	}
+
+	// Process imports at book level (creates new sheets)
+	for _, importTag := range gxl.Imports {
+		importedSheets, err := rcv.resolveAndRenderImports(ctx, importTag, normalizedData, importCtx)
+		if err != nil {
+			return nil, err
+		}
+		for _, importedSheet := range importedSheets {
+			book.AddSheet(importedSheet)
+		}
+	}
+
+	// Render each sheet defined in the main file
 	for _, sheetTag := range gxl.Sheets {
 		renderer := newSheetRenderer(rcv.conf)
 		sheet, err := renderer.RenderSheet(ctx, &sheetTag, normalizedData)
@@ -55,4 +73,70 @@ func (rcv *bookUsecase) normalizeData(data any) map[string]any {
 		return m
 	}
 	return map[string]any{"data": data}
+}
+
+// resolveAndRenderImports loads an external .gxl file and renders the specified sheet
+func (rcv *bookUsecase) resolveAndRenderImports(ctx context.Context, importTag model.ImportTag, data map[string]any, importCtx *importContext) ([]*model.Sheet, error) {
+	// Check import depth limit
+	if importCtx.importDepth >= maxImportDepth {
+		return nil, errors.New("import depth limit exceeded (max 10)")
+	}
+
+	// Resolve file path
+	filePath := importTag.Src
+	if !isAbsolutePath(importTag.Src) && importCtx.baseDir != "" {
+		filePath = joinPath(importCtx.baseDir, importTag.Src)
+	}
+
+	// Normalize path for circular detection
+	normalizedPath, err := normalizePath(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check for circular import
+	if importCtx.visitedFiles[normalizedPath] {
+		return nil, errors.New("circular import detected: " + normalizedPath)
+	}
+
+	// Mark as visited
+	importCtx.visitedFiles[normalizedPath] = true
+	importCtx.importDepth++
+	defer func() {
+		delete(importCtx.visitedFiles, normalizedPath)
+		importCtx.importDepth--
+	}()
+
+	// Load and parse the imported .gxl file
+	rcv.logger.DEBUG(util.UBR1, "Loading imported file for sheet creation", map[string]interface{}{
+		"file": normalizedPath,
+		"sheet": importTag.Sheet,
+	})
+
+	importedGxl, err := readGxlFile(normalizedPath, rcv.logger)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the specified sheet
+	var targetSheetTag *model.SheetTag
+	for i := range importedGxl.Sheets {
+		if importedGxl.Sheets[i].Name == importTag.Sheet {
+			targetSheetTag = &importedGxl.Sheets[i]
+			break
+		}
+	}
+
+	if targetSheetTag == nil {
+		return nil, errors.New("sheet \"" + importTag.Sheet + "\" not found in " + normalizedPath)
+	}
+
+	// Render the imported sheet
+	renderer := newSheetRenderer(rcv.conf)
+	sheet, err := renderer.RenderSheet(ctx, targetSheetTag, data)
+	if err != nil {
+		return nil, err
+	}
+
+	return []*model.Sheet{sheet}, nil
 }

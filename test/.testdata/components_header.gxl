@@ -1,0 +1,17 @@
+<Book name="Components">
+  <Sheet name="CompanyHeader">
+    <Grid>
+    | Company Name | Report Date | Department | Status |
+    | ------------ | ----------- | ---------- | ------ |
+    | Acme Corporation | 2026-02-08 | Sales | Active |
+    </Grid>
+  </Sheet>
+  
+  <Sheet name="PageFooter">
+    <Grid>
+    | Page | Copyright | Version |
+    | ---- | --------- | ------- |
+    | 1 | © 2026 Acme Corp | v1.0 |
+    </Grid>
+  </Sheet>
+</Book>

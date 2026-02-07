@@ -539,3 +539,13 @@ func toA1Ref(row, col int) string {
 	}
 	return fmt.Sprintf("%s%d", string(letters), row)
 }
+
+// importContext tracks import state for circular detection
+type importContext struct {
+	visitedFiles map[string]bool
+	importDepth  int
+	baseDir      string
+}
+
+// maxImportDepth is the maximum nesting level for imports
+const maxImportDepth = 10

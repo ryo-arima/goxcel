@@ -1,0 +1,11 @@
+title: "Simple Template Example"
+items:
+  - name: "Item 1"
+    value: 100
+    description: "First item"
+  - name: "Item 2"
+    value: 200
+    description: "Second item"
+  - name: "Item 3"
+    value: 300
+    description: "Third item"

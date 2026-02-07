@@ -141,14 +141,15 @@ type PivotTable struct {
 
 // Sheet contains grid cells and drawing objects.
 type Sheet struct {
-	Name   string
-	Cells  []*Cell
-	Merges []Merge
-	Images []Image
-	Shapes []Shape
-	Charts []Chart
-	Pivots []PivotTable
-	Config *SheetConfig // Sheet-level configuration
+	Name     string
+	Cells    []*Cell
+	Merges   []Merge
+	Images   []Image
+	Shapes   []Shape
+	Charts   []Chart
+	Pivots   []PivotTable
+	Config   *SheetConfig   // Sheet-level configuration
+	Metadata map[string]any // Internal metadata for rendering (e.g., import context)
 }
 
 // NewSheet creates a sheet with a given name.

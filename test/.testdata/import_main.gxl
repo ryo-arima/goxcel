@@ -1,0 +1,12 @@
+<Book name="Main">
+  <Import src="./import_common.gxl" sheet="Headers" />
+  
+  <Sheet name="Report">
+    <Anchor ref="A1" />
+    <Grid>
+    | Product | Price |
+    | ------- | ----- |
+    | Widget  | 100   |
+    </Grid>
+  </Sheet>
+</Book>

@@ -1,0 +1,9 @@
+<Book name="CircularB">
+  <Import src="./import_circular_a.gxl" sheet="A" />
+  
+  <Sheet name="B">
+    <Grid>
+    | Data B |
+    </Grid>
+  </Sheet>
+</Book>

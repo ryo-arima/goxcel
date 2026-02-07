@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Book>
+  <Sheet name="Sheet1" col_width="0.5cm" row_height="0.5cm">
+    <!-- Page Setup: B4 Landscape with minimal margins and page break view -->
+    <PageSetup
+      paper_size="B4"
+      orientation="landscape"
+      fit_to_width="1"
+      fit_to_height="0"
+      margin_left="0.2cm"
+      margin_right="0.2cm"
+      margin_top="0.2cm"
+      margin_bottom="0.2cm"
+      margin_header="0.1cm"
+      margin_footer="0.1cm"
+      view="page_break_preview"
+      show_gridlines="true"
+    />
+    
+    <!-- Page break border at row 44 (B4 landscape fits ~44 rows with 0.5cm height) -->
+    <!-- Approximately 58 columns fit in B4 landscape with 0.5cm width -->
+    <Grid ref="A44" border_sides="bottom" border="medium" border_color="#000000">
+      |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+    </Grid>
+    
+    <!-- Vertical page break border at column BF (58th column) -->
+    <Grid ref="BF1" border_sides="right" border="medium" border_color="#000000">
+      |  |
+    </Grid>
+    <Grid ref="BF44" border_sides="right" border="medium" border_color="#000000">
+      |  |
+    </Grid>
+  </Sheet>
+</Book>

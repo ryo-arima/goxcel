@@ -115,6 +115,17 @@ func parseGXL(r io.Reader) (model.GXL, error) {
 				if name := getAttr(se, "name"); name != "" {
 					gxl.BookTag.Name = name
 				}
+			case "Import":
+				// Parse Import tag at book level
+				src := getAttr(se, "src")
+				sheet := getAttr(se, "sheet")
+				if src == "" || sheet == "" {
+					return model.GXL{}, fmt.Errorf("Import tag requires both 'src' and 'sheet' attributes")
+				}
+				gxl.Imports = append(gxl.Imports, model.ImportTag{
+					Src:   src,
+					Sheet: sheet,
+				})
 			case "Sheet":
 				sheet, err := parseSheetTag(decoder, se)
 				if err != nil {
@@ -309,6 +320,18 @@ func parseSheetTag(decoder *xml.Decoder, start xml.StartElement) (model.SheetTag
 // parseNodeTag parses individual node elements.
 func parseNodeTag(decoder *xml.Decoder, start xml.StartElement) (any, error) {
 	switch start.Name.Local {
+	case "Sheet":
+		// Sheet cannot be a child of another Sheet
+		return nil, fmt.Errorf("invalid nesting: <Sheet> tag cannot appear inside another <Sheet> tag")
+
+	case "Book":
+		// Book cannot be a child of Sheet
+		return nil, fmt.Errorf("invalid nesting: <Book> tag cannot appear inside <Sheet> tag")
+
+	case "Import":
+		// Import cannot be a child of Sheet - must be at book level
+		return nil, fmt.Errorf("invalid nesting: <Import> tag must appear at book level (under <Book>), not inside <Sheet> tag")
+
 	case "Anchor":
 		node := model.AnchorTag{Ref: getAttr(start, "ref")}
 		if err := skipToEnd(decoder, "Anchor"); err != nil {

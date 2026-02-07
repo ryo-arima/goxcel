@@ -1,0 +1,16 @@
+<Book name="QuarterlyReport">
+  <!-- Import multiple sheets from different files -->
+  <Import src="./components_header.gxl" sheet="CompanyHeader" />
+  <Import src="./sales_data.gxl" sheet="MonthlySales" />
+  <Import src="./components_header.gxl" sheet="PageFooter" />
+  
+  <!-- Main report sheet -->
+  <Sheet name="Summary">
+    <Grid>
+    | Summary Item | Q1 Total | Notes |
+    | ------------ | -------- | ----- |
+    | Total Revenue | $125,000 | Strong quarter |
+    | Growth Rate | 15% | Year over year |
+    </Grid>
+  </Sheet>
+</Book>

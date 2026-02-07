@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Book>
+  <Sheet name="Invoice">
+    <!-- Header -->
+    <Grid font="Arial" font_size="16" fill_color="#003366" text_color="#FFFFFF" border="medium">
+      | ** INVOICE ** |  |  |  |
+    </Grid>
+    <Merge range="A1:D1"></Merge>
+    
+    <Grid>
+      |  |  |  |  |
+    </Grid>
+    
+    <!-- Invoice Info -->
+    <Grid border="thin">
+      | Invoice Number: | {{ invoice.number }}   | Date:     | {{ invoice.date }}    |
+      | Customer:       | {{ customer.name }}    | Due Date: | {{ invoice.dueDate }} |
+      |                 | {{ customer.address }} |           |                       |
+    </Grid>
+    
+    <Grid>
+      |  |  |  |  |
+    </Grid>
+    
+    <!-- Items Header -->
+    <Grid font="Arial" font_size="11" fill_color="#D9E9F7" border="thin">
+      | # | Description | Qty | Unit Price | Amount |
+    </Grid>
+    
+    <!-- Items Loop -->
+    <For each="item in invoice.items">
+      <Grid border="thin">
+        | {{ _number }} | {{ item.description }} | {{ item.quantity:int }} | {{ item.unitPrice:float }} | =C{{ _startRow }}*D{{ _startRow }} |
+      </Grid>
+    </For>
+    
+    <Grid>
+      |  |  |  |  |  |
+    </Grid>
+    
+    <!-- Totals -->
+    <Grid border="thin">
+      |  |  |  | Subtotal:        | =SUM(E9:E{{ _endRow }}) |
+      |  |  |  | Tax (10%):       | ={{ _startRow }}*0.1    |
+      |  |  |  | ** Total Due: ** | ={{ _startRow }}+{{ _startRow }} |
+    </Grid>
+    
+    <Grid>
+      |  |  |  |  |  |
+    </Grid>
+    
+    <!-- Footer -->
+    <Grid font="Arial" font_size="10" text_color="#666666">
+      | Thank you for your business! |  |  |  |  |
+    </Grid>
+    <Merge range="A{{ _startRow }}:E{{ _startRow }}"></Merge>
+  </Sheet>
+</Book>
