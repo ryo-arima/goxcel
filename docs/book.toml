@@ -11,7 +11,6 @@ build-dir = "dist"
 default-theme = "light"
 preferred-dark-theme = "navy"
 git-repository-url = "https://github.com/ryo-arima/goxcel"
-git-repository-icon = "fa-github"
 edit-url-template = "https://github.com/ryo-arima/goxcel/edit/main/docs/{path}"
 
 [output.html.search]
