@@ -137,6 +137,23 @@ type ForTag struct {
 	Body []any
 }
 
+// TableTag represents <Table> containing rows and columns
+type TableTag struct {
+	Rows []TableRowTag
+}
+
+// TableRowTag represents <Row> inside <Table>
+type TableRowTag struct {
+	Each string        // Optional: "item in items" syntax for looping
+	Cols []TableColTag // Child <Col> elements
+}
+
+// TableColTag represents <Col> inside <Row>
+type TableColTag struct {
+	Each    string // Optional: "item in items" syntax for looping  
+	Content string // Cell content (no pipe needed)
+}
+
 // ChartTag represents <Chart> for embedding charts.
 type ChartTag struct {
 	Ref       string

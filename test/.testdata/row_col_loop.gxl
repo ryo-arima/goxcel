@@ -1,0 +1,47 @@
+<Book name="TableTest">
+  <Sheet name="SimpleTable">
+    <Table>
+      <Row>
+        <Col>Product</Col>
+        <Col>Price</Col>
+        <Col>Stock</Col>
+      </Row>
+      <Row>
+        <Col>Widget A</Col>
+        <Col>100</Col>
+        <Col>50</Col>
+      </Row>
+      <Row>
+        <Col>Widget B</Col>
+        <Col>200</Col>
+        <Col>30</Col>
+      </Row>
+    </Table>
+  </Sheet>
+  
+  <Sheet name="RowLoop">
+    <Table>
+      <Row>
+        <Col>Product</Col>
+        <Col>Price</Col>
+      </Row>
+      <Row each="product in products">
+        <Col>{{ product.name }}</Col>
+        <Col>{{ product.price }}</Col>
+      </Row>
+    </Table>
+  </Sheet>
+  
+  <Sheet name="ColLoop">
+    <Table>
+      <Row>
+        <Col>Product</Col>
+        <Col each="product in products">{{ product.name }}</Col>
+      </Row>
+      <Row>
+        <Col>Price</Col>
+        <Col each="product in products">{{ product.price }}</Col>
+      </Row>
+    </Table>
+  </Sheet>
+</Book>

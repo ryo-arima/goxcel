@@ -1,0 +1,13 @@
+{
+  "products": [
+    {"name": "Widget A", "price": 10, "stock": 100, "q1": 100, "q2": 120, "q3": 110},
+    {"name": "Widget B", "price": 20, "stock": 200, "q1": 200, "q2": 220, "q3": 210},
+    {"name": "Widget C", "price": 30, "stock": 300, "q1": 300, "q2": 320, "q3": 310}
+  ],
+  "months": [
+    {"name": "Jan", "value": 1000},
+    {"name": "Feb", "value": 1500},
+    {"name": "Mar", "value": 2000}
+  ],
+  "quarters": [1, 2, 3]
+}

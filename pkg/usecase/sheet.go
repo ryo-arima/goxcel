@@ -92,6 +92,8 @@ func (rcv *sheetRenderer) renderNode(state *renderState, ctxStack []map[string]a
 		return rcv.handleGridRow(state, ctxStack, v)
 	case model.MergeTag:
 		return rcv.handleMerge(state, v)
+	case model.TableTag:
+		return rcv.handleTable(state, ctxStack, v)
 	case model.ForTag:
 		return rcv.handleFor(state, ctxStack, v)
 	case model.ImageTag:
@@ -338,6 +340,101 @@ func mergeStyles(a, b *model.CellStyle) *model.CellStyle {
 // handleMerge adds a cell merge to the sheet
 func (rcv *sheetRenderer) handleMerge(state *renderState, tag model.MergeTag) error {
 	state.sheet.AddMerge(model.Merge{Range: tag.Range})
+	return nil
+}
+
+// handleTable processes <Table> tag with rows and columns
+func (rcv *sheetRenderer) handleTable(state *renderState, ctxStack []map[string]any, tag model.TableTag) error {
+	for _, row := range tag.Rows {
+		if err := rcv.handleTableRow(state, ctxStack, row); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// handleTableRow processes <Row> inside <Table>
+func (rcv *sheetRenderer) handleTableRow(state *renderState, ctxStack []map[string]any, row model.TableRowTag) error {
+	if row.Each == "" {
+		// No loop, just render columns
+		return rcv.renderTableCols(state, ctxStack, row.Cols)
+	}
+
+	// Parse for syntax
+	varName, dataPath, err := rcv.parseForSyntax(row.Each)
+	if err != nil {
+		return err
+	}
+
+	items := rcv.cell.ResolvePath(ctxStack, dataPath)
+	
+	// Iterate and render row for each item
+	switch arr := items.(type) {
+	case []any:
+		for idx, item := range arr {
+			loopScope := rcv.createLoopScope(varName, item, idx)
+			newStack := append([]map[string]any{loopScope}, ctxStack...)
+			if err := rcv.renderTableCols(state, newStack, row.Cols); err != nil {
+				return err
+			}
+		}
+	case []map[string]any:
+		for idx, item := range arr {
+			loopScope := rcv.createLoopScope(varName, item, idx)
+			newStack := append([]map[string]any{loopScope}, ctxStack...)
+			if err := rcv.renderTableCols(state, newStack, row.Cols); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// renderTableCols renders columns in a row
+func (rcv *sheetRenderer) renderTableCols(state *renderState, ctxStack []map[string]any, cols []model.TableColTag) error {
+	currentRow := state.anchorRow + state.rowOffset
+	currentCol := state.anchorCol
+
+	for _, col := range cols {
+		if col.Each == "" {
+			// No loop, just render cell
+			expanded := rcv.cell.ExpandMustache(ctxStack, col.Content)
+			cell := rcv.createCell(currentRow, currentCol, expanded, ctxStack, nil)
+			state.sheet.AddCell(cell)
+			currentCol++
+		} else {
+			// Col loop: iterate horizontally
+			varName, dataPath, err := rcv.parseForSyntax(col.Each)
+			if err != nil {
+				return err
+			}
+
+			items := rcv.cell.ResolvePath(ctxStack, dataPath)
+			
+			switch arr := items.(type) {
+			case []any:
+				for idx, item := range arr {
+					loopScope := rcv.createLoopScope(varName, item, idx)
+					newStack := append([]map[string]any{loopScope}, ctxStack...)
+					expanded := rcv.cell.ExpandMustache(newStack, col.Content)
+					cell := rcv.createCell(currentRow, currentCol, expanded, ctxStack, nil)
+					state.sheet.AddCell(cell)
+					currentCol++
+				}
+			case []map[string]any:
+				for idx, item := range arr {
+					loopScope := rcv.createLoopScope(varName, item, idx)
+					newStack := append([]map[string]any{loopScope}, ctxStack...)
+					expanded := rcv.cell.ExpandMustache(newStack, col.Content)
+					cell := rcv.createCell(currentRow, currentCol, expanded, ctxStack, nil)
+					state.sheet.AddCell(cell)
+					currentCol++
+				}
+			}
+		}
+	}
+
+	state.rowOffset++
 	return nil
 }
 

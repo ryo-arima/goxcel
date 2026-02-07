@@ -430,6 +430,9 @@ func parseNodeTag(decoder *xml.Decoder, start xml.StartElement) (any, error) {
 	case "For":
 		return parseForTag(decoder, start)
 
+	case "Table":
+		return parseTableTag(decoder, start)
+
 	case "If":
 		return parseIfTag(decoder, start)
 
@@ -579,6 +582,87 @@ func parseForTag(decoder *xml.Decoder, start xml.StartElement) (model.ForTag, er
 		case xml.EndElement:
 			if se.Name.Local == "For" {
 				return forTag, nil
+			}
+		}
+	}
+}
+
+// parseTableTag parses <Table> containing rows and columns.
+func parseTableTag(decoder *xml.Decoder, start xml.StartElement) (model.TableTag, error) {
+	tableTag := model.TableTag{}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return tableTag, err
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			if t.Name.Local == "Row" {
+				row, err := parseTableRowTag(decoder, t)
+				if err != nil {
+					return tableTag, err
+				}
+				tableTag.Rows = append(tableTag.Rows, row)
+			}
+		case xml.EndElement:
+			if t.Name.Local == "Table" {
+				return tableTag, nil
+			}
+		}
+	}
+}
+
+// parseTableRowTag parses <Row> inside <Table>.
+func parseTableRowTag(decoder *xml.Decoder, start xml.StartElement) (model.TableRowTag, error) {
+	rowTag := model.TableRowTag{
+		Each: getAttr(start, "each"),
+	}
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return rowTag, err
+		}
+
+		switch t := token.(type) {
+		case xml.StartElement:
+			if t.Name.Local == "Col" {
+				col, err := parseTableColTag(decoder, t)
+				if err != nil {
+					return rowTag, err
+				}
+				rowTag.Cols = append(rowTag.Cols, col)
+			}
+		case xml.EndElement:
+			if t.Name.Local == "Row" {
+				return rowTag, nil
+			}
+		}
+	}
+}
+
+// parseTableColTag parses <Col> inside <Row>.
+func parseTableColTag(decoder *xml.Decoder, start xml.StartElement) (model.TableColTag, error) {
+	colTag := model.TableColTag{
+		Each: getAttr(start, "each"),
+	}
+
+	var content strings.Builder
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return colTag, err
+		}
+
+		switch t := token.(type) {
+		case xml.CharData:
+			content.Write(t)
+		case xml.EndElement:
+			if t.Name.Local == "Col" {
+				colTag.Content = strings.TrimSpace(content.String())
+				return colTag, nil
 			}
 		}
 	}
