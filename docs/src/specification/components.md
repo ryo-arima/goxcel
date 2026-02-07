@@ -613,14 +613,164 @@ project/
 
 ---
 
+## Import
+
+**Status:** Implemented (v1.1)
+
+The `<Import>` tag allows you to import external GXL files as separate sheets. This enables template reuse and modular sheet composition.
+
+### Syntax
+
+```xml
+<Import src="path/to/template.gxl" sheet="SheetName" />
+```
+
+### Attributes
+
+#### `src` (required)
+- **Type**: String
+- **Description**: Path to the external GXL file to import
+- **Formats**: 
+  - Relative path: `common/header.gxl`
+  - Absolute path: `/templates/shared/footer.gxl`
+
+#### `sheet` (required)
+- **Type**: String
+- **Description**: Name for the imported sheet in the workbook
+
+### Location Rules
+
+- **Book-level only**: `<Import>` tags must appear directly under `<Book>`
+- **Not in sheets**: Cannot be used inside `<Sheet>` tags
+- **Before or after sheets**: Can be mixed with `<Sheet>` definitions
+
+### Examples
+
+**Basic import:**
+```xml
+<Book>
+  <Import src="templates/sales.gxl" sheet="Sales Data" />
+  <Import src="templates/expenses.gxl" sheet="Expenses" />
+  
+  <Sheet name="Summary">
+    <Grid>
+    | Total | {{ total }} |
+    </Grid>
+  </Sheet>
+</Book>
+```
+
+**Preserves definition order:**
+```xml
+<Book>
+  <Sheet name="Cover Page">
+    <Grid>| Report Title |</Grid>
+  </Sheet>
+  
+  <Import src="q1.gxl" sheet="Q1 Data" />
+  <Import src="q2.gxl" sheet="Q2 Data" />
+  
+  <Sheet name="Annual Summary">
+    <Grid>| Summary |</Grid>
+  </Sheet>
+</Book>
+```
+
+Output sheet order: `Cover Page → Q1 Data → Q2 Data → Annual Summary`
+
+### Circular Reference Protection
+
+The import system prevents circular references:
+
+**circular_a.gxl:**
+```xml
+<Book>
+  <Import src="circular_b.gxl" sheet="B" />
+</Book>
+```
+
+**circular_b.gxl:**
+```xml
+<Book>
+  <Import src="circular_a.gxl" sheet="A" />
+</Book>
+```
+
+**Result:** Error: `circular dependency detected`
+
+### Maximum Depth
+
+Import depth is limited to **10 levels** to prevent excessive nesting:
+
+```xml
+<Book>
+  <Import src="level1.gxl" sheet="L1" />
+</Book>
+```
+
+If `level1.gxl` → `level2.gxl` → ... → `level11.gxl`, an error occurs.
+
+### Best Practices
+
+#### 1. Organize Shared Templates
+
+```
+project/
+├── templates/
+│   ├── main.gxl           # Main report
+│   └── shared/
+│       ├── header.gxl     # Reusable header
+│       ├── footer.gxl     # Reusable footer
+│       └── charts.gxl     # Common charts
+└── data/
+    └── report_data.json
+```
+
+#### 2. Use Descriptive Sheet Names
+
+**Good:**
+```xml
+<Import src="sales_q1.gxl" sheet="Q1 Sales Report" />
+<Import src="sales_q2.gxl" sheet="Q2 Sales Report" />
+```
+
+**Bad:**
+```xml
+<Import src="sales_q1.gxl" sheet="Sheet1" />
+<Import src="sales_q2.gxl" sheet="Sheet2" />
+```
+
+#### 3. Keep Imports at Top Level
+
+**Good:**
+```xml
+<Book>
+  <Import src="a.gxl" sheet="A" />
+  <Import src="b.gxl" sheet="B" />
+  <Sheet name="C">...</Sheet>
+</Book>
+```
+
+**Invalid:**
+```xml
+<Book>
+  <Sheet name="Main">
+    <Import src="a.gxl" sheet="A" />  <!-- Error: Import not allowed in Sheet -->
+  </Sheet>
+</Book>
+```
+
+---
+
 ## Implementation Status
 
-| Component | v1.0 (Placeholder) | v1.2 (Rendering) | v2.0 (Advanced) |
+| Component | v1.0 (Placeholder) | v1.1+ (Implemented) | v2.0 (Advanced) |
 |-----------|--------------------|--------------------|------------------|
 | Image | ✅ | ⏳ | - |
 | Shape | ✅ | ⏳ | - |
 | Chart | ✅ | ⏳ | - |
 | Pivot Table | ✅ | - | ⏳ |
+| Import | - | ✅ | - |
 | Button | - | - | 💭 |
 | Slider | - | - | 💭 |
 
@@ -635,5 +785,6 @@ project/
 ## Related Topics
 
 - [Core Tags](./core-tags.md) - Positioning with Anchor
+- [Table Structure](./table-structure.md) - Row and column iteration
 - [Control Structures](./control-structures.md) - Dynamic component placement
 - [Expressions](./expressions.md) - Dynamic component attributes

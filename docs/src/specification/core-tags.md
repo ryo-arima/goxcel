@@ -687,6 +687,7 @@ Core tags provide the foundation for GXL templates:
 - **`<Book>`**: Root element containing all sheets
 - **`<Sheet>`**: Individual worksheets with unique names
 - **`<Grid>`**: Pipe-delimited cell content
+- **`<Table>`**: Structured row/column iteration (see [Table Structure](./table-structure.md))
 - **`<Anchor>`**: Position content at specific cells
 - **`<Merge>`**: Combine cells into single merged cell
 
@@ -695,5 +696,6 @@ Core tags provide the foundation for GXL templates:
 ## Next Steps
 
 - [Control Structures](./control-structures.md) - Learn about loops and conditionals
+- [Table Structure](./table-structure.md) - Row and column iteration with Table tags
 - [Expressions](./expressions.md) - Dynamic value interpolation
 - [Examples](./examples.md) - See complete templates using core tags

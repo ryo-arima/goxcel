@@ -20,6 +20,7 @@
 - [Control Structures](./specification/control-structures.md)
 - [Expressions](./specification/expressions.md)
 - [Components](./specification/components.md)
+- [Table Structure](./specification/table-structure.md)
 - [Styling](./specification/styling.md)
 - [Data Context](./specification/data-context.md)
 - [Validation Rules](./specification/validation.md)
